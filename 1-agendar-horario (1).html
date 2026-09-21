@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1d1b19">
+    <title>Agendar horário - Barbearia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --carvao: #1d1b19;
+            --painel: #262320;
+            --campo: #2f2b27;
+            --linha: #433d36;
+            --latao: #c9a24d;
+            --latao-claro: #dcb765;
+            --creme: #efe7d6;
+            --suave: #a39a8a;
+            --erro: #ec9384;
+            --ok: #93c47d;
+            --fonte-titulo: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+            --fonte-texto: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+
+        body {
+            margin: 0;
+            background: var(--carvao);
+            color: var(--creme);
+            font-family: var(--fonte-texto);
+            font-size: 16px;
+            line-height: 1.45;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        button { font: inherit; }
+        :focus-visible { outline: 2px solid var(--latao-claro); outline-offset: 2px; }
+
+        /* Faixa de poste de barbeiro */
+        .poste {
+            height: 10px;
+            background: repeating-linear-gradient(-45deg,
+                var(--latao) 0 10px,
+                var(--creme) 10px 20px,
+                var(--carvao) 20px 30px);
+        }
+
+        .app { max-width: 980px; margin: 0 auto; padding: 0 20px 28px; }
+
+        .topo { padding: 28px 0 24px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px 16px; }
+        .btn-topo { padding: 10px 16px; }
+        .topo h1 {
+            margin: 0;
+            font-family: var(--fonte-titulo);
+            font-weight: 700;
+            font-size: clamp(36px, 7vw, 48px);
+            line-height: 1;
+            letter-spacing: 0.01em;
+        }
+        .topo p { margin: 8px 0 0; color: var(--suave); }
+        .status-loja {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 5px 14px 5px 11px;
+            border: 1px solid var(--linha);
+            border-radius: 999px;
+            font-size: 14px;
+            color: var(--creme);
+        }
+        .status-loja:empty { display: none; }
+        .ponto-status { width: 8px; height: 8px; border-radius: 50%; background: var(--suave); }
+        .status-loja.aberto .ponto-status { background: var(--ok); }
+        .status-loja.fechado .ponto-status { background: var(--erro); }
+
+        /* ===== Estrutura principal ===== */
+        .layout { display: grid; gap: 28px; }
+        .lateral { display: contents; }
+
+        /* ===== Tabela de preços (lado esquerdo) ===== */
+        .precos {
+            background: var(--painel);
+            border: 1px solid var(--linha);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .precos .poste { height: 8px; }
+        .precos-corpo { padding: 16px 18px 10px; }
+        .precos-titulo {
+            margin: 0 0 6px;
+            font-family: var(--fonte-titulo);
+            font-weight: 600;
+            font-size: 24px;
+            line-height: 1.1;
+        }
+        .precos-lista {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+        .precos-lista li { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; }
+        .precos-lista .ponto {
+            flex: 1;
+            min-width: 8px;
+            border-bottom: 2px dotted var(--linha);
+            transform: translateY(-4px);
+        }
+        .precos-lista .valor {
+            font-family: var(--fonte-titulo);
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--latao-claro);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .precos-whats { display: none; margin-top: 12px; text-align: center; }
+
+        .passo-titulo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 14px;
+            font-family: var(--fonte-titulo);
+            font-weight: 600;
+            font-size: 24px;
+            line-height: 1.1;
+        }
+        .passo-num {
+            flex: 0 0 auto;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: var(--latao);
+            color: var(--carvao);
+            display: grid; place-items: center;
+            font-family: var(--fonte-texto);
+            font-size: 14px; font-weight: 600;
+        }
+        .passo + .passo { margin-top: 30px; }
+
+        /* ===== Passo 1: dias ===== */
+        .dias-wrap { display: flex; align-items: center; gap: 8px; }
+        .dias {
+            flex: 1; min-width: 0;
+            display: flex; gap: 8px;
+            overflow-x: auto;
+            scroll-snap-type: x proximity;
+            padding: 2px 2px 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--linha) transparent;
+        }
+        .dia {
+            flex: 0 0 64px;
+            scroll-snap-align: start;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 10px 0 9px;
+            background: var(--painel);
+            border: 1px solid var(--linha);
+            border-radius: 10px;
+            color: var(--creme);
+            cursor: pointer;
+            transition: border-color .15s, background-color .15s;
+        }
+        .dia:hover:not(:disabled) { border-color: var(--latao); }
+        .dia .sem, .dia .mes { font-size: 13px; color: var(--suave); }
+        .dia .num { font-family: var(--fonte-titulo); font-size: 32px; font-weight: 600; line-height: 1.05; }
+        .dia[aria-pressed="true"] { background: var(--latao); border-color: var(--latao); color: var(--carvao); }
+        .dia[aria-pressed="true"] .sem,
+        .dia[aria-pressed="true"] .mes { color: rgba(29, 27, 25, .78); }
+        .dia:disabled { opacity: .5; border-style: dashed; cursor: not-allowed; }
+
+        .seta {
+            flex: 0 0 auto;
+            width: 36px; height: 36px;
+            margin-bottom: 8px;
+            border-radius: 50%;
+            background: var(--painel);
+            border: 1px solid var(--linha);
+            color: var(--creme);
+            font-size: 20px; line-height: 1;
+            cursor: pointer;
+        }
+        .seta:hover { border-color: var(--latao); }
+        @media (hover: none) { .seta { display: none; } }
+
+        /* ===== Passo 2: horários ===== */
+        .data-longa { margin: -6px 0 16px; color: var(--suave); }
+        .aviso { margin: 0 0 14px; color: var(--suave); font-size: 15px; }
+
+        .periodo + .periodo { margin-top: 20px; }
+        .periodo-topo {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin-bottom: 8px;
+            color: var(--suave); font-size: 14px;
+        }
+        .periodo-topo strong {
+            font-family: var(--fonte-titulo);
+            font-size: 19px; font-weight: 600;
+            color: var(--creme);
+        }
+        .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+        .slot {
+            min-height: 46px;
+            background: var(--campo);
+            border: 1px solid var(--linha);
+            border-radius: 8px;
+            color: var(--creme);
+            font-size: 16px;
+            font-variant-numeric: tabular-nums;
+            cursor: pointer;
+            transition: border-color .15s, background-color .15s;
+        }
+        .slot:hover:not(:disabled) { border-color: var(--latao); }
+        .slot[aria-pressed="true"] { background: var(--latao); border-color: var(--latao); color: var(--carvao); font-weight: 600; }
+        .slot:disabled {
+            background: transparent;
+            border-style: dashed;
+            color: #6f685d;
+            text-decoration: line-through;
+            cursor: not-allowed;
+        }
+        .legenda { margin: 16px 0 0; color: var(--suave); font-size: 13px; }
+
+        /* ===== Passo 3: dados ===== */
+        .dados {
+            background: var(--painel);
+            border: 1px solid var(--linha);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .campo + .campo { margin-top: 16px; }
+        .campo label { display: block; margin-bottom: 6px; font-size: 15px; font-weight: 500; }
+        .campo input {
+            width: 100%;
+            padding: 13px 14px;
+            background: var(--campo);
+            border: 1px solid var(--linha);
+            border-radius: 8px;
+            color: var(--creme);
+            font: inherit; font-size: 16px;
+        }
+        .campo input::placeholder { color: #7d7568; }
+        .campo input:focus { outline: none; border-color: var(--latao); box-shadow: 0 0 0 3px rgba(201, 162, 77, .28); }
+        .link-senha { display: inline-block; margin-top: 16px; color: var(--suave); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+        .link-senha:hover { color: var(--creme); }
+
+        /* ===== Barra de resumo + confirmar ===== */
+        .barra {
+            position: sticky; bottom: 0; z-index: 5;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px;
+            margin: 0 -20px;
+            padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+            background: rgba(29, 27, 25, .96);
+            border-top: 1px solid var(--linha);
+        }
+        .barra-resumo { flex: 1; min-width: 0; }
+        .barra-resumo small { display: block; color: var(--suave); font-size: 13px; }
+        .barra-resumo strong {
+            display: block;
+            font-family: var(--fonte-titulo);
+            font-size: 21px; font-weight: 600; line-height: 1.2;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .btn-principal {
+            flex: 0 0 auto;
+            padding: 14px 26px;
+            background: var(--latao);
+            color: var(--carvao);
+            border: 0; border-radius: 8px;
+            font-weight: 600; font-size: 16px;
+            cursor: pointer;
+            transition: background-color .15s;
+        }
+        .btn-principal:hover:not(:disabled) { background: var(--latao-claro); }
+        .btn-principal:disabled { background: var(--campo); color: #7d7568; cursor: not-allowed; }
+        .msg { order: -1; flex: 1 0 100%; margin: 0; font-size: 14px; }
+        .msg:empty { display: none; }
+        .msg.erro { color: var(--erro); }
+
+        /* ===== Tela de confirmação ===== */
+        .comanda {
+            max-width: 460px;
+            margin: 4px auto 0;
+            background: var(--painel);
+            border: 1px solid var(--linha);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .comanda .poste { height: 8px; }
+        .comanda-corpo { padding: 28px 24px 24px; text-align: center; }
+        .selo {
+            width: 54px; height: 54px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background: var(--latao); color: var(--carvao);
+            display: grid; place-items: center;
+            font-size: 28px; font-weight: 700;
+        }
+        .comanda h2 { margin: 0; font-family: var(--fonte-titulo); font-size: 34px; font-weight: 700; line-height: 1.1; }
+        .comanda-sub { margin: 6px 0 0; color: var(--suave); }
+        .detalhes {
+            margin: 22px 0;
+            padding: 16px 0;
+            border-top: 2px dashed var(--linha);
+            border-bottom: 2px dashed var(--linha);
+            display: grid; gap: 10px;
+            text-align: left;
+        }
+        .detalhes div { display: flex; justify-content: space-between; gap: 16px; }
+        .detalhes dt { color: var(--suave); }
+        .detalhes dd { margin: 0; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+        .acoes { display: grid; gap: 10px; }
+        .btn-whatsapp {
+            display: block;
+            padding: 14px;
+            background: #25d366; color: #08301a;
+            border-radius: 8px;
+            font-weight: 600; text-decoration: none;
+        }
+        .btn-whatsapp:hover { background: #3ae07b; }
+        .btn-sec {
+            padding: 12px;
+            background: transparent;
+            border: 1px solid var(--linha);
+            border-radius: 8px;
+            color: var(--creme);
+            font-size: 15px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .btn-sec:hover { border-color: var(--latao); }
+        .cancelar-bloco { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--linha); }
+        .cancelar-bloco p { margin: 0 0 10px; color: var(--suave); font-size: 14px; }
+        .cancelar-bloco .acoes { grid-template-columns: 1fr 1fr; }
+
+        /* ===== Cancelar horário ===== */
+        .msg.ok { color: var(--ok); }
+        .msg.neutro { color: var(--suave); }
+        .cancelar-view { max-width: 460px; margin: 4px auto 0; }
+        .cancelar-view h2 { margin: 0; font-family: var(--fonte-titulo); font-size: 34px; font-weight: 700; line-height: 1.1; }
+        .cancelar-view .comanda-sub { margin: 6px 0 20px; }
+        .cancelar-view .btn-principal { width: 100%; margin-top: 16px; }
+        .cancelar-view > .btn-sec { width: 100%; }
+        .msg-busca { margin-top: 12px; }
+        .lista-cancelar { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 10px; }
+        .lista-cancelar:empty { display: none; }
+        .item-cancelar {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+            padding: 14px 16px;
+            background: var(--painel);
+            border: 1px solid var(--linha);
+            border-radius: 10px;
+        }
+        .item-info strong { display: block; font-family: var(--fonte-titulo); font-size: 22px; font-weight: 600; line-height: 1.15; }
+        .item-info span { color: var(--suave); font-size: 14px; }
+        .item-acoes { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .item-acoes .btn-sec { padding: 10px 14px; }
+        .item-cancelar.confirmando .item-acoes { flex: 1 0 100%; }
+        .item-pergunta { flex: 1 0 100%; margin: 0; font-size: 15px; }
+        .btn-perigo { border-color: var(--erro); color: var(--erro); }
+        .btn-perigo:hover { background: rgba(236, 147, 132, .12); border-color: var(--erro); }
+
+        /* ===== Desktop ===== */
+        @media (min-width: 840px) {
+            .app { max-width: none; padding: 0 clamp(24px, 3vw, 56px) 48px; }
+            .layout { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+            .precos { grid-column: 1 / -1; }
+            .precos-whats { display: block; max-width: 340px; }
+            .precos-lista {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: repeat(4, auto);
+                grid-auto-flow: column;
+                column-gap: 40px;
+            }
+            .lateral { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 20px; }
+            .barra {
+                position: static;
+                margin: 0;
+                padding: 18px 20px;
+                background: var(--painel);
+                border: 1px solid var(--linha);
+                border-radius: 12px;
+                flex-direction: column; align-items: stretch;
+            }
+            .barra-resumo { flex: none; }
+            .btn-principal { width: 100%; }
+            .msg { order: 0; flex: none; }
+        }
+
+        /* Telas largas: a tabela de preços fica numa coluna à esquerda */
+        @media (min-width: 1100px) {
+            .layout { grid-template-columns: minmax(270px, 0.7fr) minmax(0, 1.5fr) minmax(320px, 1fr); gap: clamp(28px, 3vw, 48px); }
+            .precos { grid-column: auto; position: sticky; top: 20px; }
+            .precos-corpo { padding: 18px 20px 12px; }
+            .precos-lista { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; }
+            .precos-whats { max-width: none; }
+        }
+
+        /* Monitores grandes e TVs: tudo cresce um pouco para preencher a tela */
+        @media (min-width: 1500px) {
+            body { font-size: 17px; }
+            .topo h1 { font-size: 56px; }
+            .precos-titulo, .passo-titulo { font-size: 28px; }
+            .precos-lista li { padding: 9px 0; }
+            .precos-lista .valor { font-size: 26px; }
+            .dia { flex-basis: 76px; }
+            .dia .num { font-size: 36px; }
+            .slots { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+            .slot { min-height: 52px; font-size: 17px; }
+            .campo input { padding: 15px 16px; font-size: 17px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; scroll-behavior: auto !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="poste" aria-hidden="true"></div>
+
+<div class="app">
+    <header class="topo">
+        <div>
+            <h1>Agende seu horário</h1>
+            <p id="expediente"></p>
+            <div class="status-loja" id="statusLoja"><span class="ponto-status" aria-hidden="true"></span><span id="statusTexto"></span></div>
+        </div>
+        <button type="button" class="btn-sec btn-topo" id="btnAbrirCancelar">Cancelar um horário</button>
+    </header>
+
+    <form id="formAgendamento" novalidate>
+        <div class="layout">
+
+            <aside class="precos" aria-labelledby="tituloPrecos">
+                <div class="poste" aria-hidden="true"></div>
+                <div class="precos-corpo">
+                    <h2 class="precos-titulo" id="tituloPrecos">Tabela de preços</h2>
+                    <ul class="precos-lista">
+                        <li><span class="serv">Corte social</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;30</span></li>
+                        <li><span class="serv">Degradê na máquina</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;35</span></li>
+                        <li><span class="serv">Degradê na navalha</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;40</span></li>
+                        <li><span class="serv">Barba</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;20</span></li>
+                        <li><span class="serv">Corte com pigmentação</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;50</span></li>
+                        <li><span class="serv">Cabelo e barba</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;60</span></li>
+                        <li><span class="serv">Luzes</span><span class="ponto" aria-hidden="true"></span><span class="valor">R$&nbsp;90</span></li>
+                    </ul>
+                    <a class="btn-sec precos-whats" id="linkWhatsBarbearia" target="_blank" rel="noopener">Dúvidas? Fale no WhatsApp</a>
+                </div>
+            </aside>
+
+            <div class="escolha">
+                <section class="passo" aria-labelledby="tituloDia">
+                    <h2 class="passo-titulo" id="tituloDia"><span class="passo-num">1</span>Escolha o dia</h2>
+                    <div class="dias-wrap">
+                        <button type="button" class="seta" id="setaEsq" aria-label="Dias anteriores">&lsaquo;</button>
+                        <div class="dias" id="listaDias" role="group" aria-label="Dias disponíveis"></div>
+                        <button type="button" class="seta" id="setaDir" aria-label="Próximos dias">&rsaquo;</button>
+                    </div>
+                </section>
+
+                <section class="passo" aria-labelledby="tituloHorario">
+                    <h2 class="passo-titulo" id="tituloHorario"><span class="passo-num">2</span>Escolha o horário</h2>
+                    <p class="data-longa" id="dataLonga" aria-live="polite"></p>
+                    <div id="gradeHorarios"></div>
+                    <p class="legenda">Horários riscados já foram reservados.</p>
+                </section>
+            </div>
+
+            <div class="lateral">
+                <section class="dados" aria-labelledby="tituloDados">
+                    <h2 class="passo-titulo" id="tituloDados"><span class="passo-num">3</span>Seus dados</h2>
+                    <div class="campo">
+                        <label for="nome">Seu nome</label>
+                        <input type="text" id="nome" placeholder="Ex: João" autocomplete="name" required>
+                    </div>
+                    <div class="campo">
+                        <label for="whatsapp">Seu WhatsApp</label>
+                        <input type="tel" id="whatsapp" inputmode="tel" placeholder="(43) 99999-9999" autocomplete="tel-national" maxlength="15" required>
+                    </div>
+                    <a class="link-senha" href="redefinir-senha.html">Esqueci minha senha</a>
+                </section>
+
+                <div class="barra">
+                    <div class="barra-resumo">
+                        <small>Seu horário</small>
+                        <strong id="resumoValor">Escolha um horário</strong>
+                    </div>
+                    <button type="submit" class="btn-principal" id="btnEnviar" disabled>Agendar</button>
+                    <p class="msg" id="mensagem" aria-live="polite"></p>
+                </div>
+            </div>
+
+        </div>
+    </form>
+
+    <!-- Tela para o cliente cancelar o próprio horário -->
+    <section class="cancelar-view" id="viewCancelar" hidden aria-labelledby="tituloCancelar">
+        <h2 id="tituloCancelar">Cancelar horário</h2>
+        <p class="comanda-sub">Digite o WhatsApp usado no agendamento para ver seus horários marcados.</p>
+
+        <form class="dados" id="formBuscar" novalidate>
+            <div class="campo">
+                <label for="whatsappBusca">Seu WhatsApp</label>
+                <input type="tel" id="whatsappBusca" inputmode="tel" placeholder="(43) 99999-9999" autocomplete="tel-national" maxlength="15">
+            </div>
+            <button type="submit" class="btn-principal" id="btnBuscar">Buscar meus horários</button>
+            <p class="msg msg-busca" id="msgBusca" aria-live="polite"></p>
+        </form>
+
+        <ul class="lista-cancelar" id="listaCancelar"></ul>
+
+        <button type="button" class="btn-sec" id="btnVoltarAgendar">Voltar para agendar</button>
+    </section>
+
+    <!-- Tela exibida depois que o agendamento é feito -->
+    <section class="comanda" id="sucesso" hidden aria-live="polite">
+        <div class="poste" aria-hidden="true"></div>
+        <div class="comanda-corpo">
+            <div class="selo" aria-hidden="true">&#10003;</div>
+            <h2>Horário reservado</h2>
+            <p class="comanda-sub">Avise a barbearia pelo WhatsApp para fechar tudo.</p>
+
+            <dl class="detalhes">
+                <div><dt>Nome</dt><dd id="sucNome"></dd></div>
+                <div><dt>Dia</dt><dd id="sucDia"></dd></div>
+                <div><dt>Horário</dt><dd id="sucHora"></dd></div>
+            </dl>
+
+            <div class="acoes">
+                <a class="btn-whatsapp" id="sucWhats" target="_blank" rel="noopener">Enviar confirmação pelo WhatsApp</a>
+                <button type="button" class="btn-sec" id="btnNovo">Fazer outro agendamento</button>
+            </div>
+
+            <div class="cancelar-bloco" id="blocoCancelar" hidden>
+                <p>Guarde o link de cancelamento caso precise desmarcar.</p>
+                <div class="acoes">
+                    <button type="button" class="btn-sec" id="btnCopiar">Copiar link</button>
+                    <a class="btn-sec" id="linkCancelar">Cancelar horário</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const supabaseUrl = 'https://nxycjhivsaufgogpneby.supabase.co';
+    const supabaseKey = 'sb_publishable_43SnhDokJasIF84xsM_v2w__RljZuIg';
+    const barbeariaId = 1; // ajuste se sua barbearia tiver outro id na tabela
+    const whatsappBarbearia = '5543999024709'; // WhatsApp da barbearia
+
+    // ===== Horário de funcionamento e duração dos atendimentos =====
+    const HORA_ABERTURA = 9;      // 09h
+    const HORA_FECHAMENTO = 19;   // 19h (o último horário oferecido é antes disso)
+    const DIA_FECHADO = 0;        // 0 = domingo
+    const INTERVALO_MINUTOS = 30; // duração de cada horário
+    const DIAS_A_FRENTE = 30;     // quantos dias aparecem para escolha
+
+    const FUSO = 'America/Sao_Paulo';
+    const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+    const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const NOME_DIA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // ===== Elementos =====
+    const formEl = document.getElementById('formAgendamento');
+    const diasEl = document.getElementById('listaDias');
+    const gradeDiv = document.getElementById('gradeHorarios');
+    const dataLongaEl = document.getElementById('dataLonga');
+    const resumoValor = document.getElementById('resumoValor');
+    const btnEnviar = document.getElementById('btnEnviar');
+    const msgEl = document.getElementById('mensagem');
+    const nomeInput = document.getElementById('nome');
+    const whatsappInput = document.getElementById('whatsapp');
+    const sucessoEl = document.getElementById('sucesso');
+
+    // ===== Estado =====
+    let dataSelecionada = null;    // "YYYY-MM-DD"
+    let horarioSelecionado = null; // "HH:mm"
+    let idRequisicao = 0;          // evita que uma resposta antiga sobrescreva a mais nova
+
+    // Hoje, no fuso de Brasília
+    const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: FUSO });
+
+    document.getElementById('expediente').textContent =
+        `Segunda a sábado, das ${String(HORA_ABERTURA).padStart(2, '0')}h às ${String(HORA_FECHAMENTO).padStart(2, '0')}h`;
+
+    // ===== Utilitários de data =====
+    function partesData(dataStr) {
+        const [ano, mes, dia] = dataStr.split('-').map(Number);
+        return { ano, mes, dia };
+    }
+
+    // Usa meio-dia em UTC para não sofrer com mudanças de horário
+    function somarDias(dataStr, n) {
+        const { ano, mes, dia } = partesData(dataStr);
+        return new Date(Date.UTC(ano, mes - 1, dia + n, 12)).toISOString().slice(0, 10);
+    }
+
+    function diaDaSemana(dataStr) {
+        const { ano, mes, dia } = partesData(dataStr);
+        return new Date(Date.UTC(ano, mes - 1, dia, 12)).getUTCDay();
+    }
+
+    function dataLonga(dataStr) {
+        const { ano, mes, dia } = partesData(dataStr);
+        const texto = new Date(Date.UTC(ano, mes - 1, dia, 12))
+            .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+        return texto.charAt(0).toUpperCase() + texto.slice(1);
+    }
+
+    function dataCurta(dataStr) {
+        const { mes, dia } = partesData(dataStr);
+        return `${SEMANA_CURTA[diaDaSemana(dataStr)]}, ${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`;
+    }
+
+    function dataBR(dataStr) {
+        const { ano, mes, dia } = partesData(dataStr);
+        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+    }
+
+    function rotuloDia(dataStr) {
+        const texto = dataLonga(dataStr);
+        const minuscula = texto.charAt(0).toLowerCase() + texto.slice(1);
+        if (dataStr === hojeStr) return 'Hoje, ' + minuscula;
+        if (dataStr === somarDias(hojeStr, 1)) return 'Amanhã, ' + minuscula;
+        return texto;
+    }
+
+    function minutosAgoraSP() {
+        const partes = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: FUSO, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).formatToParts(new Date());
+        const h = Number(partes.find(p => p.type === 'hour').value);
+        const m = Number(partes.find(p => p.type === 'minute').value);
+        return h * 60 + m;
+    }
+
+    function dataLocalDoRegistro(valor) {
+        if (!valor) return null;
+        const texto = String(valor);
+        const temFuso = /Z$|[+-]\d{2}:?\d{2}$/.test(texto);
+        if (temFuso) {
+            const dt = new Date(texto);
+            if (isNaN(dt)) return null;
+            return dt.toLocaleDateString('en-CA', { timeZone: FUSO });
+        }
+        const m = texto.match(/^(\d{4}-\d{2}-\d{2})/);
+        return m ? m[1] : null;
+    }
+
+    function horaLocalDoRegistro(valor) {
+        if (!valor) return null;
+        const texto = String(valor);
+        const temFuso = /Z$|[+-]\d{2}:?\d{2}$/.test(texto);
+        if (temFuso) {
+            const dt = new Date(texto);
+            if (isNaN(dt)) return null;
+            return dt.toLocaleTimeString('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+        const m = texto.match(/T(\d{2}):(\d{2})/);
+        return m ? `${m[1]}:${m[2]}` : null;
+    }
+
+    function gerarHorariosDoDia() {
+        const horarios = [];
+        for (let min = HORA_ABERTURA * 60; min < HORA_FECHAMENTO * 60; min += INTERVALO_MINUTOS) {
+            const h = String(Math.floor(min / 60)).padStart(2, '0');
+            const m = String(min % 60).padStart(2, '0');
+            horarios.push(`${h}:${m}`);
+        }
+        return horarios;
+    }
+
+    // ===== Mensagens e resumo =====
+    function mostrarMsg(texto, tipo) {
+        msgEl.textContent = texto || '';
+        msgEl.className = 'msg' + (tipo ? ' ' + tipo : '');
+    }
+
+    function atualizarResumo() {
+        if (horarioSelecionado) {
+            resumoValor.textContent = `${dataCurta(dataSelecionada)} às ${horarioSelecionado}`;
+            btnEnviar.disabled = false;
+        } else {
+            resumoValor.textContent = 'Escolha um horário';
+            btnEnviar.disabled = true;
+        }
+    }
+
+    // ===== Dias =====
+    function montarDias() {
+        diasEl.innerHTML = '';
+        for (let i = 0; i < DIAS_A_FRENTE; i++) {
+            const ds = somarDias(hojeStr, i);
+            const dow = diaDaSemana(ds);
+            const { mes, dia } = partesData(ds);
+            const fechado = dow === DIA_FECHADO;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'dia';
+            btn.dataset.data = ds;
+            btn.disabled = fechado;
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', dataLonga(ds) + (fechado ? ' (fechado)' : ''));
+            btn.innerHTML =
+                `<span class="sem">${i === 0 ? 'hoje' : SEMANA_CURTA[dow]}</span>` +
+                `<span class="num">${dia}</span>` +
+                `<span class="mes">${fechado ? 'fechado' : MESES_CURTOS[mes - 1]}</span>`;
+            btn.addEventListener('click', () => selecionarDia(ds));
+            diasEl.appendChild(btn);
+        }
+    }
+
+    function selecionarDia(ds) {
+        dataSelecionada = ds;
+        diasEl.querySelectorAll('.dia').forEach(b => {
+            const ativo = b.dataset.data === ds;
+            b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+            if (ativo) b.scrollIntoView({ inline: 'center', block: 'nearest' });
+        });
+        mostrarMsg('');
+        carregarHorarios();
+    }
+
+    document.getElementById('setaEsq').addEventListener('click', () => diasEl.scrollBy({ left: -260, behavior: 'smooth' }));
+    document.getElementById('setaDir').addEventListener('click', () => diasEl.scrollBy({ left: 260, behavior: 'smooth' }));
+
+    // ===== Horários =====
+    async function carregarHorarios() {
+        const meuId = ++idRequisicao;
+        const dataStr = dataSelecionada;
+
+        horarioSelecionado = null;
+        atualizarResumo();
+        dataLongaEl.textContent = rotuloDia(dataStr);
+        gradeDiv.innerHTML = '<p class="aviso">Carregando horários…</p>';
+
+        if (diaDaSemana(dataStr) === DIA_FECHADO) {
+            gradeDiv.innerHTML = '<p class="aviso">Não atendemos aos domingos. Escolha outro dia.</p>';
+            return;
+        }
+
+        // Busca só uma janela de 3 dias em volta do dia escolhido (sobra de 1 dia para cada lado por causa de fuso).
+        // Assim a consulta continua rápida e não bate no limite de linhas do Supabase quando a agenda crescer.
+        const { data: doDia, error } = await supabaseClient
+            .from('agendamentos')
+            .select('horario, status')
+            .gte('horario', `${somarDias(dataStr, -1)}T00:00:00`)
+            .lt('horario', `${somarDias(dataStr, 2)}T00:00:00`);
+
+        if (meuId !== idRequisicao) return; // o usuário já trocou de dia
+
+        if (error) {
+            gradeDiv.innerHTML = '<p class="aviso">Não foi possível carregar os horários. Atualize a página e tente de novo.</p>';
+            console.error(error);
+            return;
+        }
+
+        const ocupados = new Set(
+            (doDia || [])
+                .filter(ag => ag.status !== 'cancelado' && dataLocalDoRegistro(ag.horario) === dataStr)
+                .map(ag => horaLocalDoRegistro(ag.horario))
+        );
+
+        renderizarHorarios(dataStr, ocupados);
+    }
+
+    function renderizarHorarios(dataStr, ocupados) {
+        const ehHoje = dataStr === hojeStr;
+        const agoraMin = minutosAgoraSP();
+
+        const grupos = [
+            { titulo: 'Manhã', itens: [] },
+            { titulo: 'Tarde', itens: [] }
+        ];
+
+        gerarHorariosDoDia().forEach(hora => {
+            const [h, m] = hora.split(':').map(Number);
+            const passou = ehHoje && (h * 60 + m) <= agoraMin;
+            const livre = !ocupados.has(hora) && !passou;
+            (h < 12 ? grupos[0] : grupos[1]).itens.push({ hora, livre });
+        });
+
+        gradeDiv.innerHTML = '';
+        let totalLivres = 0;
+
+        grupos.forEach(grupo => {
+            if (!grupo.itens.length) return;
+            const livres = grupo.itens.filter(i => i.livre).length;
+            totalLivres += livres;
+
+            const periodo = document.createElement('div');
+            periodo.className = 'periodo';
+
+            const topo = document.createElement('div');
+            topo.className = 'periodo-topo';
+            const titulo = document.createElement('strong');
+            titulo.textContent = grupo.titulo;
+            const contagem = document.createElement('span');
+            contagem.textContent = livres === 0 ? 'sem horários' : (livres === 1 ? '1 livre' : `${livres} livres`);
+            topo.append(titulo, contagem);
+
+            const grade = document.createElement('div');
+            grade.className = 'slots';
+
+            grupo.itens.forEach(({ hora, livre }) => {
+                const slot = document.createElement('button');
+                slot.type = 'button';
+                slot.className = 'slot';
+                slot.textContent = hora;
+                slot.setAttribute('aria-pressed', 'false');
+                if (livre) {
+                    slot.addEventListener('click', () => escolherHorario(hora, slot));
+                } else {
+                    slot.disabled = true;
+                    slot.setAttribute('aria-label', `${hora}, indisponível`);
+                }
+                grade.appendChild(slot);
+            });
+
+            periodo.append(topo, grade);
+            gradeDiv.appendChild(periodo);
+        });
+
+        if (totalLivres === 0) {
+            gradeDiv.insertAdjacentHTML('afterbegin', '<p class="aviso">Nenhum horário livre nesse dia. Escolha outro dia.</p>');
+        }
+    }
+
+    function escolherHorario(hora, botao) {
+        gradeDiv.querySelectorAll('.slot').forEach(s => s.setAttribute('aria-pressed', 'false'));
+        botao.setAttribute('aria-pressed', 'true');
+        horarioSelecionado = hora;
+        mostrarMsg('');
+        atualizarResumo();
+    }
+
+    // ===== Telefone com máscara =====
+    function formatarTelefone(valor) {
+        const d = valor.replace(/\D/g, '').slice(0, 11);
+        if (d.length <= 2) return d;
+        const corte = d.length > 10 ? 7 : 6;
+        const parte1 = d.slice(2, corte);
+        const parte2 = d.slice(corte);
+        return `(${d.slice(0, 2)}) ${parte1}${parte2 ? '-' + parte2 : ''}`;
+    }
+    whatsappInput.addEventListener('input', () => {
+        whatsappInput.value = formatarTelefone(whatsappInput.value);
+    });
+
+    // ===== Envio =====
+    formEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        mostrarMsg('');
+
+        if (!horarioSelecionado) {
+            mostrarMsg('Escolha um horário disponível.', 'erro');
+            return;
+        }
+
+        const nome = nomeInput.value.trim();
+        const whatsapp = whatsappInput.value.replace(/\D/g, '');
+
+        if (!nome) {
+            mostrarMsg('Digite seu nome.', 'erro');
+            nomeInput.focus();
+            return;
+        }
+        if (whatsapp.length < 10) {
+            mostrarMsg('Digite seu WhatsApp com DDD. Exemplo: (43) 99999-9999.', 'erro');
+            whatsappInput.focus();
+            return;
+        }
+
+        const diaEscolhido = dataSelecionada;
+        const horaEscolhida = horarioSelecionado;
+        const dataHorario = `${diaEscolhido}T${horaEscolhida}:00`;
+
+        btnEnviar.disabled = true;
+        btnEnviar.textContent = 'Agendando…';
+
+        const restaurarBotao = () => {
+            btnEnviar.textContent = 'Agendar';
+            atualizarResumo();
+        };
+
+        try {
+            // Checagem final contra corrida (dois clientes ao mesmo tempo)
+            const { data: existentes, error: erroConsulta } = await supabaseClient
+                .from('agendamentos')
+                .select('id')
+                .eq('horario', dataHorario)
+                .neq('status', 'cancelado');
+
+            if (erroConsulta) {
+                restaurarBotao();
+                mostrarMsg('Erro ao verificar disponibilidade: ' + erroConsulta.message, 'erro');
+                return;
+            }
+
+            if (existentes && existentes.length > 0) {
+                restaurarBotao();
+                await carregarHorarios();
+                mostrarMsg('Esse horário acabou de ser reservado. Escolha outro.', 'erro');
+                return;
+            }
+
+            const { data: inserido, error } = await supabaseClient
+                .from('agendamentos')
+                .insert([{
+                    clientes: nome,
+                    whatsapp_cliente: whatsapp,
+                    horario: dataHorario,
+                    status: 'pendente',
+                    barbearia_id: barbeariaId
+                }])
+                .select();
+
+            if (error) {
+                console.error('Erro detalhado do Supabase:', error);
+                restaurarBotao();
+                if (error.code === '23505') {
+                    await carregarHorarios();
+                    mostrarMsg('Esse horário acabou de ser reservado por outra pessoa. Escolha outro.', 'erro');
+                } else {
+                    mostrarMsg('Erro ao agendar: ' + error.message, 'erro');
+                }
+                return;
+            }
+
+            const id = inserido && inserido[0] ? inserido[0].id : null;
+            restaurarBotao();
+            mostrarSucesso({ nome, dia: diaEscolhido, hora: horaEscolhida, id });
+        } catch (err) {
+            console.error(err);
+            restaurarBotao();
+            mostrarMsg('Não foi possível concluir. Verifique sua conexão e tente de novo.', 'erro');
+        }
+    });
+
+    // ===== Confirmação =====
+    let linkCancelarUrl = '';
+
+    function mostrarSucesso({ nome, dia, hora, id }) {
+        const dataFormatada = dataBR(dia);
+
+        document.getElementById('sucNome').textContent = nome;
+        document.getElementById('sucDia').textContent = `${dataLonga(dia)} (${dataFormatada})`;
+        document.getElementById('sucHora').textContent = hora;
+
+        const texto = encodeURIComponent(`Olá! Acabei de agendar um horário: ${nome}, dia ${dataFormatada} às ${hora}.`);
+        document.getElementById('sucWhats').href = `https://wa.me/${whatsappBarbearia}?text=${texto}`;
+
+        const bloco = document.getElementById('blocoCancelar');
+        if (id) {
+            linkCancelarUrl = new URL(`3-cancelar.html?id=${encodeURIComponent(id)}`, window.location.href).href;
+            document.getElementById('linkCancelar').href = `3-cancelar.html?id=${encodeURIComponent(id)}`;
+            bloco.hidden = false;
+        } else {
+            bloco.hidden = true;
+        }
+
+        formEl.hidden = true;
+        sucessoEl.hidden = false;
+        window.scrollTo({ top: 0 });
+    }
+
+    document.getElementById('btnCopiar').addEventListener('click', async () => {
+        const btn = document.getElementById('btnCopiar');
+        try {
+            await navigator.clipboard.writeText(linkCancelarUrl);
+            btn.textContent = 'Link copiado';
+            setTimeout(() => { btn.textContent = 'Copiar link'; }, 2500);
+        } catch {
+            window.prompt('Copie o link de cancelamento:', linkCancelarUrl);
+        }
+    });
+
+    document.getElementById('btnNovo').addEventListener('click', () => {
+        nomeInput.value = '';
+        whatsappInput.value = '';
+        mostrarMsg('');
+        sucessoEl.hidden = true;
+        formEl.hidden = false;
+        carregarHorarios();
+        window.scrollTo({ top: 0 });
+    });
+
+    // ===== Cancelar horário =====
+    const topoEl = document.querySelector('.topo');
+    const viewCancelar = document.getElementById('viewCancelar');
+    const formBuscar = document.getElementById('formBuscar');
+    const whatsappBusca = document.getElementById('whatsappBusca');
+    const btnBuscar = document.getElementById('btnBuscar');
+    const msgBusca = document.getElementById('msgBusca');
+    const listaCancelar = document.getElementById('listaCancelar');
+
+    function mostrarMsgBusca(texto, tipo) {
+        msgBusca.textContent = texto || '';
+        msgBusca.className = 'msg msg-busca' + (tipo ? ' ' + tipo : '');
+    }
+
+    function abrirCancelar() {
+        topoEl.hidden = true;
+        formEl.hidden = true;
+        sucessoEl.hidden = true;
+        viewCancelar.hidden = false;
+        window.scrollTo({ top: 0 });
+        whatsappBusca.focus();
+    }
+
+    function fecharCancelar() {
+        viewCancelar.hidden = true;
+        listaCancelar.innerHTML = '';
+        mostrarMsgBusca('');
+        topoEl.hidden = false;
+        formEl.hidden = false;
+        window.scrollTo({ top: 0 });
+        carregarHorarios(); // o horário cancelado volta a aparecer como livre
+    }
+
+    whatsappBusca.addEventListener('input', () => {
+        whatsappBusca.value = formatarTelefone(whatsappBusca.value);
+    });
+    document.getElementById('btnAbrirCancelar').addEventListener('click', abrirCancelar);
+    document.getElementById('btnVoltarAgendar').addEventListener('click', fecharCancelar);
+
+    const STATUS_SEM_CANCELAMENTO = ['cancelado', 'concluido', 'concluído'];
+
+    formBuscar.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        listaCancelar.innerHTML = '';
+        mostrarMsgBusca('');
+
+        const digitos = whatsappBusca.value.replace(/\D/g, '');
+        if (digitos.length < 10) {
+            mostrarMsgBusca('Digite seu WhatsApp com DDD. Exemplo: (43) 99999-9999.', 'erro');
+            whatsappBusca.focus();
+            return;
+        }
+
+        btnBuscar.disabled = true;
+        btnBuscar.textContent = 'Buscando…';
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('agendamentos')
+                .select('id, horario, status')
+                .eq('barbearia_id', barbeariaId)
+                .eq('whatsapp_cliente', digitos);
+
+            if (error) {
+                console.error(error);
+                mostrarMsgBusca('Não foi possível buscar agora. Tente de novo em instantes.', 'erro');
+                return;
+            }
+
+            const agoraMin = minutosAgoraSP();
+            const futuros = (data || [])
+                .filter(ag => !STATUS_SEM_CANCELAMENTO.includes(String(ag.status || '').toLowerCase()))
+                .map(ag => ({
+                    id: ag.id,
+                    whats: digitos,
+                    dia: dataLocalDoRegistro(ag.horario),
+                    hora: horaLocalDoRegistro(ag.horario)
+                }))
+                .filter(ag => {
+                    if (!ag.dia || !ag.hora) return false;
+                    if (ag.dia > hojeStr) return true;
+                    if (ag.dia < hojeStr) return false;
+                    const [h, m] = ag.hora.split(':').map(Number);
+                    return h * 60 + m > agoraMin;
+                })
+                .sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora));
+
+            if (futuros.length === 0) {
+                mostrarMsgBusca('Nenhum horário futuro encontrado para esse WhatsApp. Confira o número ou fale com a barbearia.', 'neutro');
+                return;
+            }
+
+            futuros.forEach(item => listaCancelar.appendChild(montarItem(item)));
+        } catch (err) {
+            console.error(err);
+            mostrarMsgBusca('Não foi possível buscar. Verifique sua conexão e tente de novo.', 'erro');
+        } finally {
+            btnBuscar.disabled = false;
+            btnBuscar.textContent = 'Buscar meus horários';
+        }
+    });
+
+    function montarItem(item) {
+        const li = document.createElement('li');
+        li.className = 'item-cancelar';
+
+        const info = document.createElement('div');
+        info.className = 'item-info';
+        const titulo = document.createElement('strong');
+        titulo.textContent = dataLonga(item.dia);
+        const detalhe = document.createElement('span');
+        detalhe.textContent = `às ${item.hora} (${dataBR(item.dia)})`;
+        info.append(titulo, detalhe);
+
+        const acoes = document.createElement('div');
+        acoes.className = 'item-acoes';
+
+        li.append(info, acoes);
+        mostrarBotaoCancelar(li, acoes, item);
+        return li;
+    }
+
+    function mostrarBotaoCancelar(li, acoes, item) {
+        li.classList.remove('confirmando');
+        acoes.innerHTML = '';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-sec btn-perigo';
+        btn.textContent = 'Cancelar horário';
+        btn.addEventListener('click', () => pedirConfirmacao(li, acoes, item));
+        acoes.appendChild(btn);
+    }
+
+    function pedirConfirmacao(li, acoes, item) {
+        li.classList.add('confirmando');
+        acoes.innerHTML = '';
+
+        const pergunta = document.createElement('p');
+        pergunta.className = 'item-pergunta';
+        pergunta.textContent = 'Cancelar este horário?';
+
+        const sim = document.createElement('button');
+        sim.type = 'button';
+        sim.className = 'btn-sec btn-perigo';
+        sim.textContent = 'Sim, cancelar';
+
+        const nao = document.createElement('button');
+        nao.type = 'button';
+        nao.className = 'btn-sec';
+        nao.textContent = 'Manter horário';
+
+        sim.addEventListener('click', () => cancelarAgendamento(li, acoes, item, sim, nao));
+        nao.addEventListener('click', () => mostrarBotaoCancelar(li, acoes, item));
+
+        acoes.append(pergunta, sim, nao);
+    }
+
+    async function cancelarAgendamento(li, acoes, item, sim, nao) {
+        mostrarMsgBusca('');
+        sim.disabled = true;
+        nao.disabled = true;
+        sim.textContent = 'Cancelando…';
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('agendamentos')
+                .update({ status: 'cancelado' })
+                .eq('id', item.id)
+                .eq('whatsapp_cliente', item.whats)
+                .select();
+
+            if (error || !data || data.length === 0) {
+                console.error(error);
+                mostrarBotaoCancelar(li, acoes, item);
+                mostrarMsgBusca('Não foi possível cancelar. Fale com a barbearia pelo WhatsApp.', 'erro');
+                return;
+            }
+
+            li.remove();
+            mostrarMsgBusca('Horário cancelado.', 'ok');
+        } catch (err) {
+            console.error(err);
+            mostrarBotaoCancelar(li, acoes, item);
+            mostrarMsgBusca('Não foi possível cancelar. Verifique sua conexão e tente de novo.', 'erro');
+        }
+    }
+
+    // ===== Aberto ou fechado agora =====
+    function atualizarStatusLoja() {
+        const el = document.getElementById('statusLoja');
+        const texto = document.getElementById('statusTexto');
+        const agora = minutosAgoraSP();
+        const abertoHoje = diaDaSemana(hojeStr) !== DIA_FECHADO;
+
+        if (abertoHoje && agora >= HORA_ABERTURA * 60 && agora < HORA_FECHAMENTO * 60) {
+            el.className = 'status-loja aberto';
+            texto.textContent = `Aberto agora, fecha às ${HORA_FECHAMENTO}h`;
+            return;
+        }
+
+        el.className = 'status-loja fechado';
+        if (abertoHoje && agora < HORA_ABERTURA * 60) {
+            texto.textContent = `Fechado agora, abre hoje às ${HORA_ABERTURA}h`;
+            return;
+        }
+
+        const amanha = somarDias(hojeStr, 1);
+        let proximo = amanha;
+        while (diaDaSemana(proximo) === DIA_FECHADO) proximo = somarDias(proximo, 1);
+        const quando = proximo === amanha ? 'amanhã' : NOME_DIA[diaDaSemana(proximo)];
+        texto.textContent = `Fechado agora, abre ${quando} às ${HORA_ABERTURA}h`;
+    }
+
+    // ===== Início =====
+    atualizarStatusLoja();
+    setInterval(atualizarStatusLoja, 60000);
+
+    document.getElementById('linkWhatsBarbearia').href =
+        `https://wa.me/${whatsappBarbearia}?text=${encodeURIComponent('Olá! Tenho uma dúvida sobre um horário.')}`;
+
+    montarDias();
+
+    // Começa no primeiro dia com horário possível (pula domingo e o dia de hoje se já encerrou)
+    let diaInicial = hojeStr;
+    if (minutosAgoraSP() > HORA_FECHAMENTO * 60 - INTERVALO_MINUTOS) diaInicial = somarDias(diaInicial, 1);
+    while (diaDaSemana(diaInicial) === DIA_FECHADO) diaInicial = somarDias(diaInicial, 1);
+    selecionarDia(diaInicial);
+</script>
+
+</body>
+</html>
