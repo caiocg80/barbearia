@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1917">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Painel do barbeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --carvao:#1c1917;
+    --carvao-2:#292524;
+    --carvao-3:#3a3431;
+    --linha:#44403c;
+    --latao:#c8a45c;
+    --latao-claro:#e6d3a3;
+    --laranja:#f97316;
+    --laranja-esc:#c2410c;
+    --laranja-claro:#fb923c;
+    --texto:#f5f5f4;
+    --texto-2:#a8a29e;
+    --ok:#8cbf6f;
+    --erro:#ec7c66;
+    --fonte:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --fonte-titulo:'Barlow Condensed','Arial Narrow',var(--fonte);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--carvao);color:var(--texto);
+    font-family:var(--fonte);font-size:16px;line-height:1.45;
+  }
+  button,input{font:inherit;color:inherit}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--latao);outline-offset:2px}
+
+  .faixa{
+    height:6px;
+    background:repeating-linear-gradient(135deg,var(--laranja) 0 10px,var(--latao) 10px 20px,var(--carvao-3) 20px 30px);
+  }
+
+  /* ---------- botões ---------- */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+    background:var(--laranja);color:#1b1917;border:0;border-radius:6px;
+    padding:.75rem 1.1rem;font-weight:600;cursor:pointer;
+    transition:background .15s;
+  }
+  .btn:hover{background:var(--laranja-claro)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .btn-peq{padding:.5rem .85rem;font-size:.93rem}
+  .btn-sec{
+    background:transparent;color:var(--texto);border:1px solid var(--linha);
+    border-radius:6px;padding:.5rem .8rem;cursor:pointer;
+  }
+  .btn-sec:hover{border-color:var(--latao);color:var(--latao-claro)}
+  a.btn-sec{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+  .btn-link{
+    background:none;border:0;padding:.25rem .1rem;color:var(--latao);cursor:pointer;
+    text-decoration:underline;text-underline-offset:3px;
+  }
+  .btn-link:hover{color:var(--latao-claro)}
+  .btn-perigo{background:var(--erro)}
+  .btn-perigo:hover{background:#f19483}
+  .btn-cancelar{color:var(--erro)}
+  .btn-cancelar:hover{color:#f4a595}
+
+  /* ---------- login ---------- */
+  .login{
+    min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));
+    background:radial-gradient(circle at 20% 20%, #2a2320 0%, var(--carvao) 60%);
+  }
+  .card{
+    width:100%;max-width:400px;
+    background:linear-gradient(160deg, var(--carvao-2), #211d1b);
+    border:1px solid #44403c;border-radius:18px;padding:36px 30px;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);position:relative;overflow:hidden;
+  }
+  .card::before{
+    content:"";position:absolute;top:-60px;right:-60px;width:160px;height:160px;
+    background:radial-gradient(circle, rgba(249,115,22,.25), transparent 70%);border-radius:50%;
+    pointer-events:none;
+  }
+  .logo{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
+  .logo-icon{
+    width:64px;height:64px;border-radius:50%;
+    background:linear-gradient(135deg, var(--laranja), var(--laranja-esc));
+    display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:12px;
+    box-shadow:0 8px 20px rgba(249,115,22,.35);
+  }
+  .logo h1{font-size:20px;letter-spacing:.5px;color:var(--texto);text-align:center;font-weight:600;line-height:1.3}
+  .logo span{
+    display:block;font-size:12.5px;color:var(--laranja-claro);text-transform:uppercase;
+    letter-spacing:1.5px;margin-top:4px;font-weight:400;
+  }
+  .tabs{
+    display:flex;background:var(--carvao);border-radius:12px;padding:4px;margin-bottom:24px;
+    border:1px solid #44403c;
+  }
+  .tab{
+    flex:1;text-align:center;padding:10px 0;font-size:14px;font-weight:600;color:var(--texto-2);
+    background:none;border:0;border-radius:9px;cursor:pointer;transition:all .2s ease;user-select:none;
+  }
+  .tab.active{
+    background:linear-gradient(135deg, var(--laranja), var(--laranja-esc));color:#fff;
+    box-shadow:0 4px 12px rgba(249,115,22,.3);
+  }
+  .cab-modo{text-align:center;margin-bottom:22px}
+  .cab-modo h2{margin:0 0 .3rem;font-size:1.15rem;font-weight:600}
+  .cab-modo p{margin:0;color:var(--texto-2);font-size:.93rem}
+  #form-login{display:flex;flex-direction:column;gap:16px}
+  .campo{display:flex;flex-direction:column;gap:6px}
+  .campo label{
+    font-size:12.5px;color:var(--texto-2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+  }
+  .campo input{
+    width:100%;background:var(--carvao);border:1px solid #57534e;border-radius:10px;
+    padding:12px 14px;color:var(--texto);font-size:16px;outline:none;
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .campo input:focus{border-color:var(--laranja);box-shadow:0 0 0 3px rgba(249,115,22,.15)}
+  .entrada{position:relative}
+  .entrada input{padding-right:2.9rem}
+  .toggle-olho{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    background:none;border:0;cursor:pointer;color:var(--texto-2);font-size:16px;padding:8px;line-height:1;
+  }
+  .card button[type="submit"]{
+    margin-top:6px;background:linear-gradient(135deg, var(--laranja), var(--laranja-esc));
+    border:none;color:#fff;font-size:15.5px;font-weight:700;padding:13px 0;border-radius:10px;
+    cursor:pointer;letter-spacing:.3px;
+    transition:transform .15s ease, box-shadow .15s ease, opacity .2s ease;
+    box-shadow:0 8px 20px rgba(249,115,22,.3);
+  }
+  .card button[type="submit"]:hover{transform:translateY(-1px)}
+  .card button[type="submit"]:disabled{opacity:.6;cursor:not-allowed;transform:none}
+  .msg{
+    padding:11px 14px;border-radius:10px;font-size:13.5px;text-align:center;line-height:1.4;
+  }
+  .msg.erro{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  .msg.sucesso{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);color:#86efac}
+  .login-links{display:flex;justify-content:center;flex-wrap:wrap;gap:.5rem 1.25rem;margin-top:18px;font-size:.93rem}
+  .rodape{text-align:center;margin-top:22px;font-size:12px;color:#6b6560}
+  .spinner{
+    width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;
+    display:inline-block;animation:girar .7s linear infinite;vertical-align:middle;margin-right:8px;
+  }
+  @keyframes girar{to{transform:rotate(360deg)}}
+
+  /* ---------- estrutura do app ---------- */
+  .app{display:grid;grid-template-columns:15.5rem 1fr;min-height:100vh;min-height:100dvh}
+  .lateral{
+    position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;
+    background:var(--carvao-2);border-right:1px solid var(--linha);
+  }
+  .marca{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--linha)}
+  .marca-nome{display:block;font-family:var(--fonte-titulo);font-weight:700;font-size:1.65rem;line-height:1;color:var(--latao-claro)}
+  .marca-sub{display:block;margin-top:.25rem;font-size:.85rem;color:var(--texto-2)}
+  .nav{flex:1;overflow-y:auto;padding:.9rem .75rem}
+  .nav-grupo{margin:1.25rem .5rem .4rem;font-size:.85rem;color:var(--texto-2)}
+  .nav-item{
+    display:flex;align-items:center;gap:.75rem;width:100%;text-align:left;
+    background:none;border:0;border-left:3px solid transparent;border-radius:0 6px 6px 0;
+    padding:.65rem .75rem;color:var(--texto-2);cursor:pointer;
+  }
+  .nav-item svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .nav-item:hover{background:var(--carvao-3);color:var(--texto)}
+  .nav-item.ativo{background:var(--carvao-3);border-left-color:var(--laranja);color:var(--latao-claro);font-weight:600}
+  .lateral-rodape{
+    padding:.9rem 1.1rem calc(.9rem + env(safe-area-inset-bottom));
+    border-top:1px solid var(--linha);display:flex;flex-direction:column;gap:.5rem;
+  }
+  .usuario{font-size:.85rem;color:var(--texto-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .conteudo{min-width:0;padding:2rem clamp(1rem,3vw,2.5rem) 3rem}
+  .topo{
+    display:none;align-items:center;gap:.75rem;
+    position:sticky;top:0;z-index:10;background:var(--carvao);border-bottom:1px solid var(--linha);
+    padding:calc(.6rem + env(safe-area-inset-top)) 1rem .6rem;
+  }
+  .topo-titulo{font-family:var(--fonte-titulo);font-weight:600;font-size:1.35rem}
+  .btn-menu{background:none;border:1px solid var(--linha);border-radius:6px;padding:.4rem;line-height:0;cursor:pointer}
+  .btn-menu svg{width:22px;height:22px;stroke:var(--texto);fill:none;stroke-width:2;stroke-linecap:round}
+  .fundo-menu{display:none}
+
+  .view{max-width:52rem}
+  #view-agenda{max-width:72rem}
+  .cabeca{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.25rem}
+  .cabeca h1{font-family:var(--fonte-titulo);font-weight:700;font-size:2.2rem;line-height:1.05;margin:0}
+  .cabeca .sub{margin:.2rem 0 0;color:var(--texto-2)}
+  .tag-hoje{
+    display:inline-block;vertical-align:middle;margin-left:.6rem;padding:.1rem .55rem;border-radius:999px;
+    font-family:var(--fonte);font-size:.8rem;font-weight:600;background:var(--laranja);color:#1b1917;
+  }
+  .navdata{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+  .navdata .btn-sec{min-width:2.4rem}
+  .navdata input[type=date]{
+    background:var(--carvao-2);border:1px solid var(--linha);border-radius:6px;padding:.5rem .6rem;
+  }
+  .rotulo-periodo{padding:0 .5rem;font-weight:600;min-width:9rem;text-align:center}
+
+  .filtros{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.1rem}
+  .filtro{
+    background:var(--carvao-2);border:1px solid var(--linha);border-radius:999px;
+    padding:.4rem .95rem;cursor:pointer;color:var(--texto-2);
+  }
+  .filtro b{margin-left:.35rem;color:var(--texto)}
+  .filtro[aria-pressed=true]{background:var(--laranja);border-color:var(--laranja);color:#1b1917;font-weight:600}
+  .filtro[aria-pressed=true] b{color:#1b1917}
+
+  /* ---------- agenda: lista + coluna lateral ---------- */
+  .agenda-grade{display:grid;gap:1.1rem}
+  .agenda-lateral{display:contents}
+  #agenda-prox{order:0}
+  .agenda-principal{order:1;min-width:0}
+  #agenda-livres{order:2}
+  #agenda-prox:empty,#agenda-livres:empty{display:none}
+
+  .cartao{background:var(--carvao-2);border:1px solid var(--linha);border-radius:8px;padding:.9rem 1rem}
+  .prox{border-left:3px solid var(--laranja);display:flex;flex-direction:column;gap:.35rem}
+  .prox-rot{font-size:.85rem;color:var(--texto-2)}
+  .prox-linha{display:flex;align-items:center;gap:.9rem}
+  .prox-hora{font-family:var(--fonte-titulo);font-weight:700;font-size:2.4rem;line-height:1;color:var(--latao)}
+  .prox-info{display:flex;flex-direction:column;min-width:0}
+  .prox-nome{font-weight:600;font-size:1.1rem;overflow:hidden;text-overflow:ellipsis}
+  .prox-quando{font-size:.9rem;color:var(--laranja-claro)}
+  .chips{display:flex;flex-wrap:wrap;gap:.4rem}
+  .chip{
+    padding:.2rem .65rem;border:1px solid var(--linha);border-radius:999px;
+    font-size:.9rem;font-variant-numeric:tabular-nums;
+  }
+  .sem-livres{margin:0;color:var(--texto-2);font-size:.93rem}
+
+  @media (min-width:1180px){
+    .agenda-grade{grid-template-columns:minmax(0,1fr) 19rem;align-items:start;gap:1.5rem}
+    .agenda-lateral{
+      display:flex;flex-direction:column;gap:1rem;
+      grid-column:2;grid-row:1;position:sticky;top:1.25rem;
+    }
+    .agenda-principal{grid-column:1;grid-row:1}
+  }
+
+  /* ---------- lista ---------- */
+  .lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.6rem}
+  .item{
+    display:grid;grid-template-columns:minmax(4.4rem,auto) 1fr auto;align-items:center;gap:.9rem;
+    background:var(--carvao-2);border:1px solid var(--linha);border-left:3px solid var(--laranja);
+    border-radius:8px;padding:.8rem 1rem;
+  }
+  .item.concluido{border-left-color:var(--ok)}
+  .item.atrasado{border-left-color:var(--latao)}
+  .item.cancelado{border-left-color:var(--linha);opacity:.65}
+  .item.cancelado .nome{text-decoration:line-through}
+  .hora{font-family:var(--fonte-titulo);font-weight:600;font-size:1.7rem;line-height:1;color:var(--latao)}
+  .info{display:flex;flex-direction:column;min-width:0}
+  .nome{font-weight:600;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis}
+  .zap{font-size:.9rem;color:var(--texto-2);text-decoration:none;width:fit-content}
+  .zap:hover{color:var(--latao-claro);text-decoration:underline}
+  .acao{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;justify-content:flex-end}
+  .pergunta{font-size:.93rem;color:var(--texto-2)}
+  .pill{font-size:.8rem;font-weight:600;padding:.15rem .6rem;border-radius:999px;border:1px solid}
+  .pill.ok{color:var(--ok);border-color:rgba(140,191,111,.55)}
+  .pill.mudo{color:var(--texto-2);border-color:var(--linha)}
+  .pill.alerta{color:var(--latao-claro);border-color:rgba(200,164,92,.55)}
+  .vazio,.carregando,.erro-lista{
+    padding:1.6rem 1rem;text-align:center;color:var(--texto-2);
+    border:1px dashed var(--linha);border-radius:8px;
+  }
+  .erro-lista{color:var(--erro);border-color:rgba(236,124,102,.5)}
+  .aviso{
+    margin:0 0 1.1rem;padding:.65rem .85rem;border-radius:6px;font-size:.93rem;
+    background:rgba(200,164,92,.1);border:1px solid rgba(200,164,92,.4);color:var(--latao-claro);
+  }
+
+  /* ---------- histórico ---------- */
+  .resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.6rem;margin:0 0 1.25rem}
+  .resumo div{background:var(--carvao-2);border:1px solid var(--linha);border-radius:8px;padding:.7rem .9rem}
+  .resumo dt{font-size:.85rem;color:var(--texto-2);margin:0}
+  .resumo dd{margin:.1rem 0 0;font-family:var(--fonte-titulo);font-weight:600;font-size:1.9rem;line-height:1.1;color:var(--latao-claro)}
+  .resumo dd small{font-family:var(--fonte);font-size:.85rem;font-weight:400;color:var(--texto-2);margin-left:.25rem}
+
+  .grafico{
+    background:var(--carvao-2);border:1px solid var(--linha);border-radius:8px;
+    padding:1rem 1rem .6rem;margin-bottom:1.5rem;overflow-x:auto;
+  }
+  .grafico h2,.secao-titulo{font-size:1rem;font-weight:600;margin:0 0 .8rem;color:var(--texto-2)}
+  .secao-titulo .qtd{margin-left:.5rem;color:var(--latao-claro)}
+  .barras{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
+  .barras.compacto{grid-template-columns:repeat(var(--n),minmax(22px,1fr));min-width:calc(var(--n) * 26px)}
+  .barra{
+    display:flex;flex-direction:column;align-items:center;gap:.25rem;height:11rem;
+    background:none;border:0;padding:0;cursor:pointer;border-radius:4px;
+  }
+  .barra:hover .col{filter:brightness(1.15)}
+  .barra .n{font-size:.85rem;color:var(--texto);min-height:1.1em}
+  .barra .area{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center}
+  .barra .col{width:100%;max-width:2.6rem;min-height:3px;background:var(--linha);border-radius:3px 3px 0 0}
+  .barra.tem .col{background:var(--latao)}
+  .barra.ativo .col{background:var(--laranja)}
+  .barra .r{font-size:.78rem;color:var(--texto-2)}
+  .barra.ativo .r{color:var(--laranja);font-weight:600}
+
+  .grupo-dia{
+    display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
+    margin:1.4rem 0 .5rem;font-size:1.05rem;font-weight:600;
+  }
+  .grupo-dia span{font-weight:400;font-size:.9rem;color:var(--texto-2)}
+  .grupo-dia:first-child{margin-top:0}
+  .semanas{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem}
+  .sem-linha{display:grid;grid-template-columns:8.5rem 1fr 2.5rem;align-items:center;gap:.8rem;font-size:.95rem}
+  .sem-linha b{text-align:right}
+  .sem-barra{height:10px;background:var(--carvao-3);border-radius:999px;overflow:hidden}
+  .sem-barra i{display:block;height:100%;background:var(--latao);border-radius:999px}
+  details.lista-mes{margin-top:.5rem}
+  details.lista-mes summary{cursor:pointer;color:var(--latao);margin-bottom:.8rem}
+
+  #toast{
+    position:fixed;left:50%;bottom:calc(1.25rem + env(safe-area-inset-bottom));transform:translateX(-50%);
+    background:var(--carvao-3);border:1px solid var(--latao);border-radius:8px;padding:.6rem 1rem;
+    z-index:50;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  #toast.visivel{opacity:1}
+
+  /* ---------- telas estreitas ---------- */
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr}
+    .lateral{
+      position:fixed;top:0;bottom:0;left:0;height:auto;width:min(17rem,84vw);z-index:30;
+      transform:translateX(-102%);transition:transform .22s ease;
+      padding-top:env(safe-area-inset-top);
+    }
+    .lateral.aberta{transform:none}
+    .fundo-menu.aberto{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
+    .topo{display:flex}
+    .conteudo{padding-top:1.25rem}
+    .cabeca h1{font-size:1.9rem}
+    .item{grid-template-columns:minmax(3.6rem,auto) 1fr;row-gap:.5rem}
+    .item .acao{grid-column:1 / -1;justify-content:flex-start;gap:.4rem .5rem}
+    .item .btn-peq{padding:.5rem .7rem}
+    .sem-linha{grid-template-columns:7rem 1fr 2rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;animation:none !important}
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN ======================= -->
+<main class="login" id="tela-login" hidden>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">💈</div>
+      <h1>Barbearia
+        <span>Acesso do Barbeiro</span>
+      </h1>
+    </div>
+
+    <div class="tabs" id="tabs" role="tablist">
+      <button type="button" class="tab active" data-modo="entrar" role="tab">Entrar</button>
+      <button type="button" class="tab" data-modo="cadastrar" role="tab">Cadastrar senha</button>
+    </div>
+
+    <div class="cab-modo" id="login-cab" hidden>
+      <h2 id="login-titulo"></h2>
+      <p id="login-sub"></p>
+    </div>
+
+    <form id="form-login" novalidate>
+      <div class="campo" data-campo="email">
+        <label for="f-email">Login (e-mail)</label>
+        <input type="email" id="f-email" placeholder="seuemail@exemplo.com" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="campo" data-campo="senha">
+        <label for="f-senha" id="rot-senha">Senha</label>
+        <div class="entrada">
+          <input type="password" id="f-senha" placeholder="••••••••" autocomplete="current-password">
+          <button type="button" class="toggle-olho" data-alvo="f-senha" aria-label="Mostrar ou ocultar a senha">👁</button>
+        </div>
+      </div>
+      <div class="campo" data-campo="conf">
+        <label for="f-conf">Confirmar senha</label>
+        <div class="entrada">
+          <input type="password" id="f-conf" placeholder="repita a senha" autocomplete="new-password">
+          <button type="button" class="toggle-olho" data-alvo="f-conf" aria-label="Mostrar ou ocultar a senha">👁</button>
+        </div>
+      </div>
+
+      <button type="submit" id="login-botao">Entrar no painel</button>
+      <div class="msg" id="login-msg" role="alert" hidden></div>
+    </form>
+
+    <div class="login-links">
+      <button type="button" class="btn-link" data-modo="esqueci" data-em="entrar">Esqueci minha senha</button>
+      <button type="button" class="btn-link" data-modo="entrar" data-em="esqueci">Voltar para entrar</button>
+    </div>
+
+    <div class="rodape">Acesso restrito ao barbeiro responsável</div>
+  </div>
+</main>
+
+<!-- ======================= PAINEL ======================= -->
+<div class="app" id="tela-app" hidden>
+  <aside class="lateral" id="lateral" aria-label="Menu principal">
+    <div class="faixa"></div>
+    <div class="marca">
+      <span class="marca-nome">Barbearia</span>
+      <span class="marca-sub">Painel do barbeiro</span>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item" data-view="agenda" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+        Agenda
+      </button>
+
+      <p class="nav-grupo">Cortes feitos</p>
+      <button class="nav-item" data-view="dia" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        Diário
+      </button>
+      <button class="nav-item" data-view="semana" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M9 10v11M15 10v11"/></svg>
+        Semanal
+      </button>
+      <button class="nav-item" data-view="mes" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+        Mensal
+      </button>
+    </nav>
+
+    <div class="lateral-rodape">
+      <span class="usuario" id="usuario-email"></span>
+      <button class="btn-sec" type="button" id="btn-sair">Sair</button>
+    </div>
+  </aside>
+  <div class="fundo-menu" id="fundo-menu"></div>
+
+  <div>
+    <header class="topo">
+      <button class="btn-menu" type="button" id="btn-menu" aria-label="Abrir menu" aria-controls="lateral">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <span class="topo-titulo" id="topo-titulo">Agenda</span>
+    </header>
+
+    <main class="conteudo">
+
+      <!-- Agenda -->
+      <section class="view" id="view-agenda" hidden>
+        <div class="cabeca">
+          <div>
+            <h1 id="agenda-titulo"></h1>
+          </div>
+          <div class="navdata">
+            <button class="btn-sec" data-nav="ant" type="button" aria-label="Dia anterior">&lsaquo;</button>
+            <input type="date" id="agenda-data" aria-label="Escolher dia">
+            <button class="btn-sec" data-nav="prox" type="button" aria-label="Próximo dia">&rsaquo;</button>
+            <button class="btn-sec" data-nav="hoje" type="button">Hoje</button>
+          </div>
+        </div>
+
+        <div class="agenda-grade">
+          <div class="agenda-lateral">
+            <div id="agenda-prox"></div>
+            <div id="agenda-livres"></div>
+          </div>
+
+          <div class="agenda-principal">
+            <div class="filtros" id="agenda-filtros">
+              <button class="filtro" type="button" data-filtro="todos" aria-pressed="true">Todos<b>0</b></button>
+              <button class="filtro" type="button" data-filtro="pendente" aria-pressed="false">Pendentes<b>0</b></button>
+              <button class="filtro" type="button" data-filtro="concluido" aria-pressed="false">Concluídos<b>0</b></button>
+            </div>
+            <ul class="lista" id="agenda-lista"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Histórico diário -->
+      <section class="view" id="view-dia" hidden>
+        <div class="cabeca">
+          <div>
+            <h1>Cortes do dia</h1>
+            <p class="sub" id="dia-sub"></p>
+          </div>
+          <div class="navdata">
+            <button class="btn-sec" data-nav="ant" type="button" aria-label="Dia anterior">&lsaquo;</button>
+            <input type="date" id="dia-data" aria-label="Escolher dia">
+            <button class="btn-sec" data-nav="prox" type="button" aria-label="Próximo dia">&rsaquo;</button>
+            <button class="btn-sec" data-nav="hoje" type="button">Hoje</button>
+          </div>
+        </div>
+        <div id="dia-corpo"></div>
+      </section>
+
+      <!-- Histórico semanal -->
+      <section class="view" id="view-semana" hidden>
+        <div class="cabeca">
+          <div>
+            <h1>Cortes da semana</h1>
+            <p class="sub">Segunda a domingo</p>
+          </div>
+          <div class="navdata">
+            <button class="btn-sec" data-nav="ant" type="button" aria-label="Semana anterior">&lsaquo;</button>
+            <span class="rotulo-periodo" id="semana-rotulo"></span>
+            <button class="btn-sec" data-nav="prox" type="button" aria-label="Próxima semana">&rsaquo;</button>
+            <button class="btn-sec" data-nav="hoje" type="button">Esta semana</button>
+          </div>
+        </div>
+        <div id="semana-corpo"></div>
+      </section>
+
+      <!-- Histórico mensal -->
+      <section class="view" id="view-mes" hidden>
+        <div class="cabeca">
+          <div>
+            <h1>Cortes do mês</h1>
+          </div>
+          <div class="navdata">
+            <button class="btn-sec" data-nav="ant" type="button" aria-label="Mês anterior">&lsaquo;</button>
+            <span class="rotulo-periodo" id="mes-rotulo"></span>
+            <button class="btn-sec" data-nav="prox" type="button" aria-label="Próximo mês">&rsaquo;</button>
+            <button class="btn-sec" data-nav="hoje" type="button">Este mês</button>
+          </div>
+        </div>
+        <div id="mes-corpo"></div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================
+   CONFIGURAÇÃO
+   ===================================================== */
+const SUPABASE_URL = 'https://nxycjhivsaufgogpneby.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_43SnhDokJasIF84xsM_v2w__RljZuIg';
+const TABELA = 'agendamentos';
+
+// Se a tabela guarda mais de uma barbearia, coloque aqui o barbearia_id (número ou texto).
+// Deixe null para listar todos os agendamentos que o login enxerga.
+const BARBEARIA_ID = null;
+
+// Texto gravado na coluna "status" ao mudar o agendamento.
+// Ajuste se o seu formulário/painel antigo usa outra grafia (ex.: 'Concluído').
+// O STATUS_CANCELADO precisa ser igual ao que a página de agendamento do cliente usa.
+const STATUS_CONCLUIDO = 'concluido';
+const STATUS_PENDENTE  = 'pendente';
+const STATUS_CANCELADO = 'cancelado';
+
+// Expediente (mantenha igual ao da página de agendamento). Serve para mostrar os horários livres.
+const HORA_ABERTURA = 9;       // 09h
+const HORA_FECHAMENTO = 19;    // 19h
+const INTERVALO_MINUTOS = 30;  // duração de cada horário
+const DIA_FECHADO = 0;         // 0 = domingo
+
+/* =====================================================
+   UTILIDADES
+   ===================================================== */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const pad = n => String(n).padStart(2, '0');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const plural = (n, um, varios) => n === 1 ? um : varios;
+
+const isoDe = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dataDe = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+const hoje = () => isoDe(new Date());
+const somaDias = (iso, n) => { const d = dataDe(iso); d.setDate(d.getDate() + n); return isoDe(d); };
+const idxSemana = iso => (dataDe(iso).getDay() + 6) % 7;           // 0 = segunda
+const inicioSemana = iso => somaDias(iso, -idxSemana(iso));
+const fmtCurto = iso => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+const fmtLongo = iso => cap(new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(dataDe(iso)));
+const fmtDiaCurto = iso => cap(new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(dataDe(iso))) + ', ' + fmtCurto(iso);
+const fmtMes = (a, m) => cap(new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(a, m, 1)));
+const DIAS_ABREV = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+// horas em texto "HH:MM" <-> minutos desde a meia-noite
+const agoraHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const minDe = hm => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
+function horariosDoDia(){
+  const r = [];
+  for (let m = HORA_ABERTURA * 60; m < HORA_FECHAMENTO * 60; m += INTERVALO_MINUTOS) r.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
+  return r;
+}
+
+const soDigitos = s => String(s || '').replace(/\D/g, '');
+function fmtZap(s){
+  let d = soDigitos(s);
+  if (d.startsWith('55') && d.length >= 12) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return s || '';
+}
+function linkZap(s){
+  let d = soDigitos(s);
+  if (!d) return '';
+  if (d.length <= 11) d = '55' + d;
+  return `https://wa.me/${d}`;
+}
+
+let toastTimer;
+function aviso(texto, ms = 3200){
+  const t = $('#toast');
+  t.textContent = texto;
+  t.classList.add('visivel');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('visivel'), ms);
+}
+
+/* =====================================================
+   SUPABASE
+   ===================================================== */
+if (!window.supabase) {
+  $('#tela-login').hidden = false;
+  const m = $('#login-msg');
+  m.hidden = false; m.className = 'msg erro';
+  m.textContent = 'Não foi possível carregar o Supabase. Verifique a internet e recarregue a página.';
+  return;
+}
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function semAcento(s){ return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function classificar(status){
+  const s = semAcento(status);
+  if (s.includes('cancel')) return 'cancelado';
+  if (s.includes('conclu') || s.includes('feito') || s.includes('realiz')) return 'concluido';
+  return 'pendente';
+}
+function normalizar(r){
+  // "horario" é lido como texto (AAAA-MM-DDTHH:MM) para não sofrer deslocamento de fuso.
+  const t = String(r.horario || '').replace(' ', 'T');
+  return {
+    id: r.id,
+    nome: r.clientes || 'Sem nome',
+    zap: r.whatsapp_cliente || '',
+    dia: t.slice(0, 10),
+    hora: t.slice(11, 16),
+    status: classificar(r.status)
+  };
+}
+async function buscar(ini, fim){
+  let q = db.from(TABELA).select('*')
+    .gte('horario', `${ini}T00:00:00`)
+    .lt('horario', `${fim}T00:00:00`)
+    .order('horario', { ascending: true });
+  if (BARBEARIA_ID !== null) q = q.eq('barbearia_id', BARBEARIA_ID);
+  return await q;
+}
+function agruparPorDia(lista){
+  const m = new Map();
+  lista.forEach(l => { if (!m.has(l.dia)) m.set(l.dia, []); m.get(l.dia).push(l); });
+  return m;
+}
+
+/* =====================================================
+   LOGIN
+   ===================================================== */
+let recuperando = location.hash.includes('type=recovery');
+let modo = 'entrar';
+
+const MODOS = {
+  entrar:    { botao: 'Entrar no painel',   ocupado: 'Entrando...',    campos: ['email', 'senha'],         rotSenha: 'Senha',      auto: 'current-password' },
+  cadastrar: { botao: 'Cadastrar senha',    ocupado: 'Cadastrando...', campos: ['email', 'senha', 'conf'], rotSenha: 'Nova senha', auto: 'new-password' },
+  esqueci:   { botao: 'Enviar link',        ocupado: 'Enviando...',    campos: ['email'],                  rotSenha: 'Senha',      auto: 'current-password',
+               titulo: 'Redefinir senha',   sub: 'Enviaremos um link para o seu e-mail.' },
+  nova:      { botao: 'Salvar nova senha',  ocupado: 'Salvando...',    campos: ['senha', 'conf'],          rotSenha: 'Nova senha', auto: 'new-password',
+               titulo: 'Criar nova senha',  sub: 'Escolha a nova senha de acesso.' }
+};
+
+function msgLogin(texto, tipo){
+  const m = $('#login-msg');
+  if (!texto) { m.hidden = true; return; }
+  m.hidden = false; m.className = 'msg ' + tipo; m.textContent = texto;
+}
+function setModo(novo){
+  modo = novo;
+  const c = MODOS[novo];
+  const comAbas = novo === 'entrar' || novo === 'cadastrar';
+  $('#tabs').hidden = !comAbas;
+  $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.modo === novo));
+  $('#login-cab').hidden = comAbas;
+  if (!comAbas) { $('#login-titulo').textContent = c.titulo; $('#login-sub').textContent = c.sub; }
+  $('#login-botao').textContent = c.botao;
+  $('#rot-senha').textContent = c.rotSenha;
+  $('#f-senha').setAttribute('autocomplete', c.auto);
+  $$('[data-campo]').forEach(el => {
+    const visivel = c.campos.includes(el.dataset.campo);
+    el.hidden = !visivel;
+    $('input', el).required = visivel;
+  });
+  $$('[data-em]').forEach(el => { el.hidden = !el.dataset.em.split(' ').includes(novo); });
+  $('.login-links').hidden = novo === 'nova';
+  msgLogin('');
+}
+function traduzir(msg){
+  const m = String(msg || '');
+  if (/invalid login credentials/i.test(m)) return 'Login ou senha incorretos.';
+  if (/email not confirmed/i.test(m)) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
+  if (/already registered|already been registered/i.test(m)) return 'Este e-mail já tem cadastro. Use "Esqueci minha senha" se precisar.';
+  if (/at least \d+ characters/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (/rate limit|security purposes|too many/i.test(m)) return 'Muitas tentativas. Aguarde um instante e tente de novo.';
+  if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da anterior.';
+  if (/valid email|invalid email/i.test(m)) return 'Digite um e-mail válido.';
+  if (/failed to fetch|network/i.test(m)) return 'Sem conexão com o servidor. Verifique a internet.';
+  return m || 'Algo deu errado. Tente novamente.';
+}
+
+$$('[data-modo]').forEach(b => b.addEventListener('click', () => setModo(b.dataset.modo)));
+$$('.toggle-olho').forEach(o => o.addEventListener('click', () => {
+  const inp = $('#' + o.dataset.alvo);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  o.textContent = inp.type === 'password' ? '👁' : '🙈';
+}));
+
+$('#form-login').addEventListener('submit', async e => {
+  e.preventDefault();
+  msgLogin('');
+  const email = $('#f-email').value.trim();
+  const senha = $('#f-senha').value;
+  const conf  = $('#f-conf').value;
+  const c = MODOS[modo];
+
+  if (c.campos.includes('email') && !email) return msgLogin('Digite seu e-mail.', 'erro');
+  if (c.campos.includes('senha') && !senha) return msgLogin('Digite a senha.', 'erro');
+  if (c.campos.includes('conf')) {
+    if (senha.length < 6) return msgLogin('A senha precisa ter pelo menos 6 caracteres.', 'erro');
+    if (senha !== conf)   return msgLogin('As senhas não coincidem.', 'erro');
+  }
+
+  const botao = $('#login-botao');
+  botao.disabled = true;
+  botao.innerHTML = '<span class="spinner"></span>' + c.ocupado;
+  try {
+    if (modo === 'entrar') {
+      const { error } = await db.auth.signInWithPassword({ email, password: senha });
+      if (error) throw error;
+    } else if (modo === 'cadastrar') {
+      const { data, error } = await db.auth.signUp({ email, password: senha });
+      if (error) throw error;
+      if (!data.session) {
+        setModo('entrar');
+        msgLogin('Cadastro feito! Abra o link que enviamos ao seu e-mail para confirmar e depois entre.', 'sucesso');
+      }
+    } else if (modo === 'esqueci') {
+      const opcoes = location.protocol.startsWith('http') ? { redirectTo: location.origin + location.pathname } : {};
+      const { error } = await db.auth.resetPasswordForEmail(email, opcoes);
+      if (error) throw error;
+      msgLogin('Se esse e-mail tiver acesso, o link de redefinição já está a caminho.', 'sucesso');
+    } else if (modo === 'nova') {
+      const { error } = await db.auth.updateUser({ password: senha });
+      if (error) throw error;
+      recuperando = false;
+      history.replaceState(null, '', location.pathname + location.search);
+      $('#f-senha').value = ''; $('#f-conf').value = '';
+      const { data } = await db.auth.getSession();
+      if (data.session) { mostrarApp(data.session); aviso('Senha atualizada.'); }
+      else { setModo('entrar'); msgLogin('Senha atualizada. Entre com a nova senha.', 'sucesso'); }
+    }
+  } catch (err) {
+    msgLogin(traduzir(err.message), 'erro');
+  } finally {
+    botao.disabled = false;
+    botao.textContent = MODOS[modo].botao;
+  }
+});
+
+/* =====================================================
+   SESSÃO
+   ===================================================== */
+let appVisivel = false;
+let usuarioId = null;
+let timerAtualizar = null;
+
+function mostrarLogin(){
+  appVisivel = false; usuarioId = null;
+  clearInterval(timerAtualizar);
+  $('#tela-app').hidden = true;
+  $('#tela-login').hidden = false;
+  document.title = 'Entrar · Painel do barbeiro';
+  $('#f-senha').value = ''; $('#f-conf').value = '';
+  if (!['entrar', 'cadastrar', 'esqueci', 'nova'].includes(modo) || modo === 'nova' && !recuperando) setModo('entrar');
+}
+function mostrarApp(sessao){
+  if (appVisivel && usuarioId === sessao.user.id) return;
+  appVisivel = true; usuarioId = sessao.user.id;
+  $('#tela-login').hidden = true;
+  $('#tela-app').hidden = false;
+  $('#usuario-email').textContent = sessao.user.email || '';
+  document.title = 'Painel do barbeiro';
+  ir(estado.view || 'agenda');
+  clearInterval(timerAtualizar);
+  // Atualiza sozinho a cada minuto (novos agendamentos, cancelamentos, "próximo cliente")
+  timerAtualizar = setInterval(() => {
+    if (!document.hidden && appVisivel) VIEWS[estado.view].carregar(true);
+  }, 60000);
+}
+
+// Ao voltar para o app (ex.: reabrir o celular), atualiza na hora
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && appVisivel) VIEWS[estado.view].carregar(true);
+});
+
+db.auth.onAuthStateChange((evento, sessao) => {
+  if (evento === 'PASSWORD_RECOVERY') {
+    recuperando = true;
+    setTimeout(() => { mostrarLogin(); setModo('nova'); }, 0);
+    return;
+  }
+  if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') return;
+  if (recuperando) return;
+  setTimeout(() => { sessao ? mostrarApp(sessao) : mostrarLogin(); }, 0);
+});
+db.auth.getSession().then(({ data }) => {
+  if (recuperando) return;
+  data.session ? mostrarApp(data.session) : mostrarLogin();
+});
+$('#btn-sair').addEventListener('click', () => db.auth.signOut());
+
+/* =====================================================
+   NAVEGAÇÃO (menu lateral)
+   ===================================================== */
+const agoraD = new Date();
+const estado = {
+  view: 'agenda',
+  diaAgenda: hoje(),
+  filtro: 'todos',
+  agenda: [],
+  diaCarregado: null,
+  confirmandoId: null,
+  diaHist: hoje(),
+  semana: inicioSemana(hoje()),
+  mes: { a: agoraD.getFullYear(), m: agoraD.getMonth() }
+};
+let seq = 0;
+
+const VIEWS = {
+  agenda: { titulo: 'Agenda',       carregar: s => carregarAgenda(s) },
+  dia:    { titulo: 'Cortes do dia', carregar: s => carregarDia(s) },
+  semana: { titulo: 'Cortes da semana', carregar: s => carregarSemana(s) },
+  mes:    { titulo: 'Cortes do mês', carregar: s => carregarMes(s) }
+};
+
+function ir(v){
+  estado.view = v;
+  $$('.nav-item').forEach(b => {
+    const ativo = b.dataset.view === v;
+    b.classList.toggle('ativo', ativo);
+    if (ativo) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  $$('.view').forEach(s => { s.hidden = s.id !== 'view-' + v; });
+  $('#topo-titulo').textContent = VIEWS[v].titulo;
+  fecharMenu();
+  window.scrollTo(0, 0);
+  VIEWS[v].carregar(false);
+}
+$$('.nav-item').forEach(b => b.addEventListener('click', () => ir(b.dataset.view)));
+
+function abrirMenu(){ $('#lateral').classList.add('aberta'); $('#fundo-menu').classList.add('aberto'); }
+function fecharMenu(){ $('#lateral').classList.remove('aberta'); $('#fundo-menu').classList.remove('aberto'); }
+$('#btn-menu').addEventListener('click', abrirMenu);
+$('#fundo-menu').addEventListener('click', fecharMenu);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenu(); });
+
+// botões ‹ Hoje › de cada tela
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-nav]');
+  if (!b) return;
+  const v = b.closest('.view').id.slice(5);
+  const q = b.dataset.nav;
+  const passo = q === 'ant' ? -1 : 1;
+  if (v === 'agenda') estado.diaAgenda = q === 'hoje' ? hoje() : somaDias(estado.diaAgenda, passo);
+  if (v === 'dia')    estado.diaHist   = q === 'hoje' ? hoje() : somaDias(estado.diaHist, passo);
+  if (v === 'semana') estado.semana    = q === 'hoje' ? inicioSemana(hoje()) : somaDias(estado.semana, 7 * passo);
+  if (v === 'mes') {
+    if (q === 'hoje') { const n = new Date(); estado.mes = { a: n.getFullYear(), m: n.getMonth() }; }
+    else { const d = new Date(estado.mes.a, estado.mes.m + passo, 1); estado.mes = { a: d.getFullYear(), m: d.getMonth() }; }
+  }
+  VIEWS[v].carregar(false);
+});
+$('#agenda-data').addEventListener('change', e => { if (e.target.value) { estado.diaAgenda = e.target.value; carregarAgenda(false); } });
+$('#dia-data').addEventListener('change', e => { if (e.target.value) { estado.diaHist = e.target.value; carregarDia(false); } });
+
+function abrirDia(dia){ estado.diaHist = dia; ir('dia'); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('.barra[data-dia]');
+  if (b) abrirDia(b.dataset.dia);
+});
+
+/* =====================================================
+   AGENDA
+   ===================================================== */
+const carregandoHTML = '<li class="carregando">Carregando…</li>';
+const erroHTML = msg => `<li class="erro-lista">Não foi possível carregar: ${esc(msg)}</li>`;
+
+async function carregarAgenda(silencioso){
+  const meu = ++seq;
+  const dia = estado.diaAgenda;
+  $('#agenda-data').value = dia;
+  $('#agenda-titulo').innerHTML = esc(fmtLongo(dia)) + (dia === hoje() ? '<span class="tag-hoje">Hoje</span>' : '');
+  if (!silencioso) {
+    estado.confirmandoId = null;
+    $('#agenda-lista').innerHTML = carregandoHTML;
+    $('#agenda-prox').innerHTML = '';
+    $('#agenda-livres').innerHTML = '';
+  }
+
+  const antes = new Map(estado.agenda.map(l => [String(l.id), l.status]));
+  const mesmoDia = estado.diaCarregado === dia;
+
+  const { data, error } = await buscar(dia, somaDias(dia, 1));
+  if (meu !== seq) return;
+  if (error) {
+    // Numa atualização automática, mantém o que já está na tela em vez de apagar a lista.
+    if (!silencioso) $('#agenda-lista').innerHTML = erroHTML(error.message);
+    return;
+  }
+  estado.agenda = data.map(normalizar);
+  estado.diaCarregado = dia;
+  renderAgenda();
+  if (silencioso && mesmoDia) avisarMudancas(antes);
+}
+
+// Avisa quando chega um agendamento novo ou um cliente cancela enquanto o painel está aberto
+function avisarMudancas(antes){
+  const novos = estado.agenda.filter(l => !antes.has(String(l.id)) && l.status !== 'cancelado');
+  const cancelados = estado.agenda.filter(l => {
+    const anterior = antes.get(String(l.id));
+    return anterior && anterior !== 'cancelado' && l.status === 'cancelado';
+  });
+  const partes = [];
+  if (novos.length === 1) partes.push(`Novo agendamento: ${novos[0].nome} às ${novos[0].hora}.`);
+  else if (novos.length > 1) partes.push(`${novos.length} novos agendamentos.`);
+  if (cancelados.length === 1) partes.push(`${cancelados[0].nome} cancelou o horário das ${cancelados[0].hora}.`);
+  else if (cancelados.length > 1) partes.push(`${cancelados.length} horários foram cancelados.`);
+  if (partes.length) aviso(partes.join(' '), 7000);
+}
+
+// Pendente que já passou do horário (o corte deveria ter acabado)
+function passouDoHorario(l){
+  const h = hoje();
+  if (l.dia < h) return true;
+  if (l.dia > h) return false;
+  return minDe(agoraHM()) >= minDe(l.hora) + INTERVALO_MINUTOS;
+}
+
+function renderAgenda(){
+  const todas = estado.agenda;
+  const ativas = todas.filter(l => l.status !== 'cancelado');
+  const cont = {
+    todos: ativas.length,
+    pendente: ativas.filter(l => l.status === 'pendente').length,
+    concluido: ativas.filter(l => l.status === 'concluido').length
+  };
+  $$('#agenda-filtros .filtro').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.filtro === estado.filtro));
+    $('b', b).textContent = cont[b.dataset.filtro];
+  });
+
+  renderLateral();
+
+  const visiveis = estado.filtro === 'todos' ? todas : todas.filter(l => l.status === estado.filtro);
+  const ul = $('#agenda-lista');
+  if (!visiveis.length) {
+    const txt = estado.filtro === 'pendente' ? 'Nenhum horário pendente neste dia.'
+              : estado.filtro === 'concluido' ? 'Nenhum corte concluído neste dia.'
+              : 'Nenhum horário marcado neste dia.';
+    ul.innerHTML = `<li class="vazio">${txt}</li>`;
+    return;
+  }
+  ul.innerHTML = visiveis.map(itemAgenda).join('');
+}
+
+// Cartão do próximo cliente + horários livres do dia
+function renderLateral(){
+  const dia = estado.diaAgenda;
+  const h = hoje();
+  const ativas = estado.agenda.filter(l => l.status !== 'cancelado');
+  const pendentes = ativas.filter(l => l.status === 'pendente');
+  const agora = minDe(agoraHM());
+
+  // Próximo cliente
+  let prox = null, rotulo = '', quando = '';
+  if (dia === h) {
+    prox = pendentes.find(l => minDe(l.hora) >= agora);
+    rotulo = 'Próximo cliente';
+    if (prox) {
+      const falta = minDe(prox.hora) - agora;
+      quando = falta === 0 ? 'agora'
+             : falta < 60 ? `em ${falta} min`
+             : `em ${Math.floor(falta / 60)}h${pad(falta % 60)}`;
+    }
+  } else if (dia > h) {
+    prox = pendentes[0];
+    rotulo = 'Primeiro cliente do dia';
+  }
+
+  if (prox) {
+    const zap = linkZap(prox.zap);
+    $('#agenda-prox').innerHTML =
+      `<div class="cartao prox"><span class="prox-rot">${rotulo}</span>` +
+      `<div class="prox-linha"><span class="prox-hora">${esc(prox.hora)}</span>` +
+      `<div class="prox-info"><span class="prox-nome">${esc(prox.nome)}</span>` +
+      (quando ? `<span class="prox-quando">${quando}</span>` : '') + '</div></div>' +
+      (zap ? `<a class="zap" href="${zap}" target="_blank" rel="noopener">${esc(fmtZap(prox.zap))}</a>` : '') +
+      '</div>';
+  } else {
+    $('#agenda-prox').innerHTML = '';
+  }
+
+  // Horários livres (só para hoje e dias futuros em que a barbearia abre)
+  if (dia >= h && dataDe(dia).getDay() !== DIA_FECHADO) {
+    const ocupados = new Set(ativas.map(l => l.hora));
+    const livres = horariosDoDia().filter(s => !ocupados.has(s) && (dia > h || minDe(s) > agora));
+    $('#agenda-livres').innerHTML =
+      `<div class="cartao"><h2 class="secao-titulo">Horários livres<span class="qtd">${livres.length}</span></h2>` +
+      (livres.length
+        ? `<div class="chips">${livres.map(s => `<span class="chip">${s}</span>`).join('')}</div>`
+        : '<p class="sem-livres">Nenhum horário livre neste dia.</p>') +
+      '</div>';
+  } else {
+    $('#agenda-livres').innerHTML = '';
+  }
+}
+
+function blocoNome(l){
+  const zap = linkZap(l.zap);
+  return `<div class="info"><span class="nome">${esc(l.nome)}</span>` +
+    (zap ? `<a class="zap" href="${zap}" target="_blank" rel="noopener">${esc(fmtZap(l.zap))}</a>` : '') + '</div>';
+}
+
+// Link do WhatsApp com a mensagem de lembrete já escrita
+function linkLembrete(l){
+  const base = linkZap(l.zap);
+  if (!base) return '';
+  const primeiro = l.nome === 'Sem nome' ? '' : String(l.nome).trim().split(/\s+/)[0];
+  const h = hoje();
+  const quando = l.dia === h ? 'hoje' : l.dia === somaDias(h, 1) ? 'amanhã' : `no dia ${fmtCurto(l.dia)}`;
+  const texto = `Olá${primeiro ? ', ' + primeiro : ''}! Passando para lembrar do seu horário na barbearia ${quando} às ${l.hora}. Até lá!`;
+  return `${base}?text=${encodeURIComponent(texto)}`;
+}
+
+function itemAgenda(l){
+  const atrasado = l.status === 'pendente' && passouDoHorario(l);
+  const id = esc(l.id);
+  let acao = '';
+  if (l.status === 'pendente') {
+    if (String(estado.confirmandoId) === String(l.id)) {
+      acao = '<span class="pergunta">Cancelar este horário?</span>' +
+        `<button class="btn btn-peq btn-perigo" type="button" data-acao="cancelar-sim" data-id="${id}">Sim, cancelar</button>` +
+        `<button class="btn-sec btn-peq" type="button" data-acao="cancelar-nao" data-id="${id}">Manter</button>`;
+    } else {
+      const lembrete = atrasado ? '' : linkLembrete(l);
+      acao = (atrasado ? '<span class="pill alerta">Já passou</span>' : '') +
+        (lembrete ? `<a class="btn-sec btn-peq" href="${lembrete}" target="_blank" rel="noopener">Lembrar</a>` : '') +
+        `<button class="btn btn-peq" type="button" data-acao="concluir" data-id="${id}">Concluir corte</button>` +
+        `<button class="btn-link btn-cancelar" type="button" data-acao="cancelar" data-id="${id}">Cancelar</button>`;
+    }
+  } else if (l.status === 'concluido') {
+    acao = `<span class="pill ok">Concluído</span><button class="btn-link" type="button" data-acao="desfazer" data-id="${id}">Desfazer</button>`;
+  } else {
+    acao = '<span class="pill mudo">Cancelado</span>';
+  }
+  return `<li class="item ${l.status}${atrasado ? ' atrasado' : ''}"><div class="hora">${esc(l.hora)}</div>${blocoNome(l)}<div class="acao">${acao}</div></li>`;
+}
+function itemFeito(l){
+  return `<li class="item concluido"><div class="hora">${esc(l.hora)}</div>${blocoNome(l)}</li>`;
+}
+
+$('#agenda-filtros').addEventListener('click', e => {
+  const b = e.target.closest('.filtro');
+  if (!b) return;
+  estado.filtro = b.dataset.filtro;
+  renderAgenda();
+});
+
+$('#agenda-lista').addEventListener('click', async e => {
+  const b = e.target.closest('[data-acao]');
+  if (!b) return;
+  const linha = estado.agenda.find(l => String(l.id) === b.dataset.id);
+  if (!linha) return;
+  const acao = b.dataset.acao;
+
+  // Cancelar pede confirmação antes (evita toque sem querer)
+  if (acao === 'cancelar')      { estado.confirmandoId = linha.id; renderAgenda(); return; }
+  if (acao === 'cancelar-nao')  { estado.confirmandoId = null; renderAgenda(); return; }
+
+  let novo;
+  if (acao === 'concluir') novo = 'concluido';
+  else if (acao === 'desfazer') novo = 'pendente';
+  else if (acao === 'cancelar-sim') novo = 'cancelado';
+  else return;
+
+  const gravar = novo === 'concluido' ? STATUS_CONCLUIDO : novo === 'cancelado' ? STATUS_CANCELADO : STATUS_PENDENTE;
+  const anterior = linha.status;
+  estado.confirmandoId = null;
+  linha.status = novo;
+  renderAgenda();
+  const { error } = await db.from(TABELA)
+    .update({ status: gravar })
+    .eq('id', linha.id);
+  if (error) {
+    linha.status = anterior;
+    renderAgenda();
+    aviso('Não foi possível salvar: ' + error.message);
+  } else {
+    aviso(novo === 'concluido' ? 'Corte marcado como concluído.'
+        : novo === 'cancelado' ? 'Horário cancelado. Ele já pode ser marcado por outro cliente.'
+        : 'Voltou para pendente.');
+  }
+});
+
+/* =====================================================
+   HISTÓRICO — componentes
+   ===================================================== */
+function barrasHTML(itens, compacto){
+  const max = Math.max(1, ...itens.map(i => i.valor));
+  const corpo = itens.map(i => {
+    const titulo = `${i.valor} ${plural(i.valor, 'corte', 'cortes')} em ${fmtCurto(i.dia)}`;
+    return `<button type="button" class="barra${i.valor ? ' tem' : ''}${i.ativo ? ' ativo' : ''}" data-dia="${i.dia}" title="${titulo}" aria-label="${titulo}">` +
+      `<span class="n">${i.valor || ''}</span>` +
+      `<span class="area"><span class="col" style="height:${Math.round(i.valor / max * 100)}%"></span></span>` +
+      `<span class="r">${esc(i.rotulo)}</span></button>`;
+  }).join('');
+  return `<div class="barras${compacto ? ' compacto' : ''}" style="--n:${itens.length}">${corpo}</div>`;
+}
+function resumoHTML(pares){
+  return '<dl class="resumo">' + pares.map(([r, v, pequeno]) =>
+    `<div><dt>${esc(r)}</dt><dd>${esc(v)}${pequeno ? `<small>${esc(pequeno)}</small>` : ''}</dd></div>`).join('') + '</dl>';
+}
+function listaAgrupadaHTML(porDia){
+  const dias = Array.from(porDia.keys()).sort();
+  if (!dias.length) return '<p class="vazio">Nenhum corte concluído neste período.</p>';
+  return dias.map(d => {
+    const l = porDia.get(d);
+    return `<h3 class="grupo-dia">${esc(fmtDiaCurto(d))}<span>${l.length} ${plural(l.length, 'corte', 'cortes')}</span></h3>` +
+      `<ul class="lista">${l.map(itemFeito).join('')}</ul>`;
+  }).join('');
+}
+function avisoPendentes(todas){
+  const n = todas.filter(l => l.status === 'pendente' && l.dia <= hoje()).length;
+  if (!n) return '';
+  return `<p class="aviso">${n} ${plural(n, 'agendamento deste período ainda está', 'agendamentos deste período ainda estão')} como pendente${n === 1 ? '' : 's'}. Marque como concluído na Agenda para entrar no histórico.</p>`;
+}
+function melhorDia(porDia){
+  let melhor = null;
+  porDia.forEach((l, d) => { if (!melhor || l.length > melhor.n || (l.length === melhor.n && d < melhor.d)) melhor = { d, n: l.length }; });
+  return melhor;
+}
+function erroCorpo(sel, msg){ $(sel).innerHTML = `<p class="erro-lista">Não foi possível carregar: ${esc(msg)}</p>`; }
+
+/* =====================================================
+   HISTÓRICO — diário
+   ===================================================== */
+async function carregarDia(silencioso){
+  const meu = ++seq;
+  const dia = estado.diaHist;
+  $('#dia-data').value = dia;
+  $('#dia-sub').textContent = fmtLongo(dia) + (dia === hoje() ? ' (hoje)' : '');
+  if (!silencioso) $('#dia-corpo').innerHTML = '<p class="carregando">Carregando…</p>';
+
+  const ini = somaDias(dia, -13);
+  const { data, error } = await buscar(ini, somaDias(dia, 1));
+  if (meu !== seq) return;
+  if (error) return erroCorpo('#dia-corpo', error.message);
+
+  const todas = data.map(normalizar);
+  const feitos = todas.filter(l => l.status === 'concluido');
+  const por = agruparPorDia(feitos);
+  const doDia = por.get(dia) || [];
+
+  const itens = [];
+  for (let i = 0; i < 14; i++) {
+    const d = somaDias(ini, i);
+    itens.push({ dia: d, valor: (por.get(d) || []).length, rotulo: d.slice(8, 10), ativo: d === dia });
+  }
+
+  const resumo = resumoHTML([
+    ['Cortes no dia', String(doDia.length)],
+    ['Primeiro', doDia.length ? doDia[0].hora : '—'],
+    ['Último', doDia.length ? doDia[doDia.length - 1].hora : '—']
+  ]);
+  const pend = avisoPendentes(todas.filter(l => l.dia === dia));
+  const lista = doDia.length
+    ? `<ul class="lista">${doDia.map(itemFeito).join('')}</ul>`
+    : '<p class="vazio">Nenhum corte concluído neste dia.</p>';
+
+  $('#dia-corpo').innerHTML =
+    resumo + pend +
+    `<div class="grafico"><h2>Últimos 14 dias</h2>${barrasHTML(itens, false)}</div>` +
+    lista;
+}
+
+/* =====================================================
+   HISTÓRICO — semanal
+   ===================================================== */
+async function carregarSemana(silencioso){
+  const meu = ++seq;
+  const ini = estado.semana, fim = somaDias(ini, 7);
+  const atual = ini === inicioSemana(hoje());
+  $('#semana-rotulo').textContent = `${fmtCurto(ini)} a ${fmtCurto(somaDias(ini, 6))}`;
+  $('#semana-rotulo').title = atual ? 'Esta semana' : '';
+  if (!silencioso) $('#semana-corpo').innerHTML = '<p class="carregando">Carregando…</p>';
+
+  const { data, error } = await buscar(ini, fim);
+  if (meu !== seq) return;
+  if (error) return erroCorpo('#semana-corpo', error.message);
+
+  const todas = data.map(normalizar);
+  const feitos = todas.filter(l => l.status === 'concluido');
+  const por = agruparPorDia(feitos);
+
+  const itens = [];
+  for (let i = 0; i < 7; i++) {
+    const d = somaDias(ini, i);
+    itens.push({ dia: d, valor: (por.get(d) || []).length, rotulo: DIAS_ABREV[i], ativo: d === hoje() });
+  }
+  const diasCom = por.size;
+  const media = diasCom ? (feitos.length / diasCom).toFixed(1).replace('.', ',') : '—';
+  const melhor = melhorDia(por);
+
+  $('#semana-corpo').innerHTML =
+    resumoHTML([
+      ['Cortes na semana', String(feitos.length)],
+      ['Dias com corte', String(diasCom)],
+      ['Média por dia', media],
+      ['Melhor dia', melhor ? DIAS_ABREV[idxSemana(melhor.d)] : '—', melhor ? `${melhor.n}` : '']
+    ]) +
+    avisoPendentes(todas) +
+    `<div class="grafico"><h2>Cortes por dia</h2>${barrasHTML(itens, false)}</div>` +
+    listaAgrupadaHTML(por);
+}
+
+/* =====================================================
+   HISTÓRICO — mensal
+   ===================================================== */
+function semanasDoMes(ano, mes){
+  const primeiro = isoDe(new Date(ano, mes, 1));
+  const ultimo = isoDe(new Date(ano, mes + 1, 0));
+  const res = [];
+  let cur = primeiro;
+  while (cur <= ultimo) {
+    const fimSem = somaDias(inicioSemana(cur), 6);
+    const fim = fimSem < ultimo ? fimSem : ultimo;
+    res.push({ ini: cur, fim });
+    cur = somaDias(fim, 1);
+  }
+  return res;
+}
+
+async function carregarMes(silencioso){
+  const meu = ++seq;
+  const { a, m } = estado.mes;
+  const ini = isoDe(new Date(a, m, 1));
+  const fim = isoDe(new Date(a, m + 1, 1));
+  const nDias = new Date(a, m + 1, 0).getDate();
+  $('#mes-rotulo').textContent = fmtMes(a, m);
+  if (!silencioso) $('#mes-corpo').innerHTML = '<p class="carregando">Carregando…</p>';
+
+  const { data, error } = await buscar(ini, fim);
+  if (meu !== seq) return;
+  if (error) return erroCorpo('#mes-corpo', error.message);
+
+  const todas = data.map(normalizar);
+  const feitos = todas.filter(l => l.status === 'concluido');
+  const por = agruparPorDia(feitos);
+
+  const itens = [];
+  for (let i = 1; i <= nDias; i++) {
+    const d = `${a}-${pad(m + 1)}-${pad(i)}`;
+    itens.push({ dia: d, valor: (por.get(d) || []).length, rotulo: String(i), ativo: d === hoje() });
+  }
+  const diasCom = por.size;
+  const media = diasCom ? (feitos.length / diasCom).toFixed(1).replace('.', ',') : '—';
+  const melhor = melhorDia(por);
+
+  const semanas = semanasDoMes(a, m).map(s => {
+    let n = 0;
+    for (let d = s.ini; d <= s.fim; d = somaDias(d, 1)) n += (por.get(d) || []).length;
+    return { ...s, n };
+  });
+  const maxSem = Math.max(1, ...semanas.map(s => s.n));
+  const semanasHTML = '<div class="semanas">' + semanas.map(s =>
+    `<div class="sem-linha"><span>${fmtCurto(s.ini)} a ${fmtCurto(s.fim)}</span>` +
+    `<span class="sem-barra"><i style="width:${Math.round(s.n / maxSem * 100)}%"></i></span><b>${s.n}</b></div>`
+  ).join('') + '</div>';
+
+  $('#mes-corpo').innerHTML =
+    resumoHTML([
+      ['Cortes no mês', String(feitos.length)],
+      ['Dias com corte', String(diasCom)],
+      ['Média por dia', media],
+      ['Melhor dia', melhor ? melhor.d.slice(8, 10) + '/' + melhor.d.slice(5, 7) : '—', melhor ? `${melhor.n} ${plural(melhor.n, 'corte', 'cortes')}` : '']
+    ]) +
+    avisoPendentes(todas) +
+    `<div class="grafico"><h2>Cortes por dia</h2>${barrasHTML(itens, true)}</div>` +
+    `<h2 class="secao-titulo">Por semana</h2>${semanasHTML}` +
+    `<details class="lista-mes"><summary>Ver todos os cortes do mês</summary>${listaAgrupadaHTML(por)}</details>`;
+}
+
+/* =====================================================
+   INÍCIO
+   ===================================================== */
+setModo('entrar');
+if (recuperando) { $('#tela-login').hidden = false; setModo('nova'); }
+
+})();
+</script>
+</body>
+</html>
