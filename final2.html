@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1d1b19">
+<title>Agendar horário - Barbearia</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--carvao:#1d1b19;--painel:#262320;--campo:#2f2b27;--linha:#433d36;--latao:#c9a24d;--latao-claro:#dcb765;--creme:#efe7d6;--suave:#a39a8a;--erro:#ec9384;--ok:#93c47d;--titulo:'Barlow Condensed','Arial Narrow',Arial,sans-serif;--texto:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--carvao);color:var(--creme);font:16px/1.45 var(--texto)}
+button,input,select{font:inherit}
+:focus-visible{outline:2px solid var(--latao-claro);outline-offset:2px}
+.poste{height:10px;background:repeating-linear-gradient(-45deg,var(--latao) 0 10px,var(--creme) 10px 20px,var(--carvao) 20px 30px)}
+.app{max-width:980px;margin:0 auto;padding:0 20px 28px}
+.topo{padding:28px 0 24px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px}
+.topo h1{margin:0;font:700 clamp(36px,7vw,48px)/1 var(--titulo)}
+.layout{display:grid;gap:28px}.lateral{display:contents}
+.card{background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:18px}
+.titulo{display:flex;align-items:center;gap:10px;margin:0 0 14px;font:600 24px/1.1 var(--titulo)}
+.num{width:26px;height:26px;border-radius:50%;background:var(--latao);color:var(--carvao);display:grid;place-items:center;font:600 14px var(--texto)}
+.passo+.passo{margin-top:30px}
+.precos ul{list-style:none;margin:0;padding:0}
+.precos li{display:flex;align-items:baseline;gap:8px;padding:7px 0}
+.precos .ponto{flex:1;border-bottom:2px dotted var(--linha);transform:translateY(-4px)}
+.precos .valor{font:600 22px var(--titulo);color:var(--latao-claro);white-space:nowrap}
+.dias-wrap{display:flex;align-items:center;gap:8px}
+.dias{flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:thin;scrollbar-color:var(--linha) transparent}
+.dia{flex:0 0 64px;display:flex;flex-direction:column;align-items:center;padding:10px 0 9px;background:var(--painel);border:1px solid var(--linha);border-radius:10px;color:var(--creme);cursor:pointer}
+.dia:hover{border-color:var(--latao)}
+.dia small{font-size:13px;color:var(--suave)}
+.dia b{font:600 32px/1.05 var(--titulo)}
+.dia[aria-pressed=true]{background:var(--latao);border-color:var(--latao);color:var(--carvao)}
+.dia[aria-pressed=true] small{color:rgba(29,27,25,.78)}
+.seta{width:36px;height:36px;margin-bottom:8px;border-radius:50%;background:var(--painel);border:1px solid var(--linha);color:var(--creme);font-size:20px;cursor:pointer}
+@media(hover:none){.seta{display:none}}
+.data-longa{margin:-6px 0 14px;color:var(--suave)}
+.campo+.campo{margin-top:16px}
+.campo label{display:block;margin-bottom:6px;font-weight:500}
+.campo input,.campo select{width:100%;padding:13px 14px;background:var(--campo);border:1px solid var(--linha);border-radius:8px;color:var(--creme);font-size:16px;color-scheme:dark}
+.campo input:focus,.campo select:focus{outline:none;border-color:var(--latao);box-shadow:0 0 0 3px rgba(201,162,77,.28)}
+.barra{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:12px 14px;margin:0 -20px;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:rgba(29,27,25,.96);border-top:1px solid var(--linha)}
+.resumo{flex:1;min-width:0}
+.resumo small{display:block;color:var(--suave);font-size:13px}
+.resumo strong{display:block;font:600 21px/1.2 var(--titulo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{padding:14px 26px;background:var(--latao);color:var(--carvao);border:0;border-radius:8px;font-weight:600;cursor:pointer}
+.btn:hover:not(:disabled){background:var(--latao-claro)}
+.btn:disabled{background:var(--campo);color:#7d7568;cursor:not-allowed}
+.msg{order:-1;flex:1 0 100%;margin:0;font-size:14px}.msg:empty{display:none}
+.erro{color:var(--erro)}.ok{color:var(--ok)}.neutro{color:var(--suave)}
+@media(min-width:840px){
+.app{max-width:none;padding:0 clamp(24px,3vw,56px) 48px}
+.layout{grid-template-columns:minmax(260px,.7fr) minmax(0,1.5fr) minmax(320px,1fr);gap:40px;align-items:start}
+.precos{position:sticky;top:20px}
+.lateral{display:flex;flex-direction:column;gap:16px;position:sticky;top:20px}
+.barra{position:static;margin:0;padding:18px 20px;background:var(--painel);border:1px solid var(--linha);border-radius:12px;flex-direction:column;align-items:stretch}
+.resumo{flex:none}.btn{width:100%}.msg{order:0;flex:none}
+}
+</style>
+</head>
+<body>
+<div class="poste" aria-hidden="true"></div>
+<div class="app">
+  <header class="topo">
+    <h1>Agende seu horário</h1>
+  </header>
+
+  <form id="form" novalidate>
+    <div class="layout">
+      <aside class="card precos" aria-labelledby="tPrecos">
+        <h2 class="titulo" id="tPrecos">Tabela de preços</h2>
+        <ul id="listaPrecos">
+          <li><span class="serv">Corte social</span><span class="ponto"></span><span class="valor">R$&nbsp;30</span></li>
+          <li><span class="serv">Degradê na máquina</span><span class="ponto"></span><span class="valor">R$&nbsp;35</span></li>
+          <li><span class="serv">Degradê na navalha</span><span class="ponto"></span><span class="valor">R$&nbsp;40</span></li>
+          <li><span class="serv">Barba</span><span class="ponto"></span><span class="valor">R$&nbsp;20</span></li>
+          <li><span class="serv">Corte com pigmentação</span><span class="ponto"></span><span class="valor">R$&nbsp;50</span></li>
+          <li><span class="serv">Cabelo e barba</span><span class="ponto"></span><span class="valor">R$&nbsp;60</span></li>
+          <li><span class="serv">Luzes</span><span class="ponto"></span><span class="valor">R$&nbsp;90</span></li>
+        </ul>
+      </aside>
+
+      <div>
+        <section class="passo">
+          <h2 class="titulo"><span class="num">1</span>Qual dia você prefere?</h2>
+          <div class="dias-wrap">
+            <button type="button" class="seta" id="esq" aria-label="Dias anteriores">&lsaquo;</button>
+            <div class="dias" id="dias" role="group" aria-label="Dias"></div>
+            <button type="button" class="seta" id="dir" aria-label="Próximos dias">&rsaquo;</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="lateral">
+        <section class="card" aria-labelledby="tDados">
+          <h2 class="titulo" id="tDados"><span class="num">2</span>Seus dados</h2>
+          <div class="campo"><label for="nome">Seu nome</label><input type="text" id="nome" placeholder="Ex: João" autocomplete="name" required></div>
+          <div class="campo"><label for="whatsapp">Seu WhatsApp</label><input type="tel" id="whatsapp" inputmode="tel" placeholder="(43) 99999-9999" autocomplete="tel-national" maxlength="15" required></div>
+          <div class="campo"><label for="servico">Serviço</label><select id="servico" required><option value="">Escolha o serviço</option></select></div>
+        </section>
+        <div class="barra">
+          <div class="resumo"><small>Dia escolhido</small><strong id="resumo"></strong></div>
+          <button type="submit" class="btn" id="btnEnviar">Agende seu horário</button>
+          <p class="msg" id="mensagem" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+const whatsappBarbearia = '5543999024709';
+const DIAS_A_FRENTE = 60;
+const FUSO = 'America/Sao_Paulo';
+const SEMANA = ['dom','seg','ter','qua','qui','sex','sáb'];
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const $ = id => document.getElementById(id);
+const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: FUSO });
+let dataSel = hojeStr;
+
+// ===== Datas =====
+const partes = d => d.split('-').map(Number);
+const utc = (d, n = 0) => { const [a, m, x] = partes(d); return new Date(Date.UTC(a, m - 1, x + n, 12)); };
+const somarDias = (d, n) => utc(d, n).toISOString().slice(0, 10);
+const dow = d => utc(d).getUTCDay();
+const dataBR = d => { const [a, m, x] = partes(d); return `${String(x).padStart(2,'0')}/${String(m).padStart(2,'0')}/${a}`; };
+const dataCurta = d => `${SEMANA[dow(d)]}, ${dataBR(d).slice(0, 5)}`;
+function dataLonga(d) {
+  const t = utc(d).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function msg(t, tipo) { $('mensagem').textContent = t || ''; $('mensagem').className = 'msg' + (tipo ? ' ' + tipo : ''); }
+
+// ===== Dias =====
+function montarDias() {
+  for (let i = 0; i < DIAS_A_FRENTE; i++) {
+    const ds = somarDias(hojeStr, i), [, m, d] = partes(ds);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'dia'; b.dataset.data = ds;
+    b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', dataLonga(ds));
+    b.innerHTML = `<small>${i === 0 ? 'hoje' : SEMANA[dow(ds)]}</small><b>${d}</b><small>${MESES[m - 1]}</small>`;
+    b.addEventListener('click', () => selecionarDia(ds));
+    $('dias').appendChild(b);
+  }
+}
+function selecionarDia(ds) {
+  dataSel = ds;
+  document.querySelectorAll('.dia').forEach(b => {
+    const on = b.dataset.data === ds;
+    b.setAttribute('aria-pressed', on);
+    if (on) b.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
+  $('resumo').textContent = dataCurta(ds);
+  msg('');
+}
+$('esq').onclick = () => $('dias').scrollBy({ left: -260, behavior: 'smooth' });
+$('dir').onclick = () => $('dias').scrollBy({ left: 260, behavior: 'smooth' });
+
+// ===== Telefone =====
+function formatarTelefone(v) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  const c = d.length > 10 ? 7 : 6;
+  return `(${d.slice(0, 2)}) ${d.slice(2, c)}${d.slice(c) ? '-' + d.slice(c) : ''}`;
+}
+$('whatsapp').addEventListener('input', e => { e.target.value = formatarTelefone(e.target.value); });
+
+// ===== Agende seu horário: abre o WhatsApp da barbearia com a mensagem pronta =====
+$('form').addEventListener('submit', e => {
+  e.preventDefault(); msg('');
+  const nome = $('nome').value.trim(), servico = $('servico').value;
+  if (!nome) { msg('Digite seu nome.', 'erro'); return $('nome').focus(); }
+  if ($('whatsapp').value.replace(/\D/g, '').length !== 11) { msg('Digite seu WhatsApp com DDD e o 9. Exemplo: (43) 99999-9999.', 'erro'); return $('whatsapp').focus(); }
+  if (!servico) { msg('Escolha o serviço.', 'erro'); return $('servico').focus(); }
+
+  const texto = encodeURIComponent(
+    `Olá! Quero agendar um horário.\n` +
+    `Nome: ${nome}\n` +
+    `Serviço: ${servico}\n` +
+    `Dia preferido: ${dataLonga(dataSel)} (${dataBR(dataSel)})\n` +
+    `WhatsApp: ${$('whatsapp').value}\n` +
+    `Qual horário você consegue me encaixar?`
+  );
+  const url = `https://wa.me/${whatsappBarbearia}?text=${texto}`;
+  if (!window.open(url, '_blank', 'noopener')) location.href = url;
+});
+
+// ===== Início =====
+document.querySelectorAll('#listaPrecos li').forEach(li => {
+  const nome = li.querySelector('.serv').textContent, valor = li.querySelector('.valor').textContent.replace(/\u00a0/g, ' ');
+  $('servico').add(new Option(`${nome} (${valor})`, nome));
+});
+montarDias();
+selecionarDia(hojeStr);
+</script>
+</body>
+</html>
