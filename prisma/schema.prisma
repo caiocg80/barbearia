@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  role      String   @default("barbeiro")
+  criadoEm  DateTime @default(now())
+}
+
+model Agendamento {
+  id              String   @id @default(uuid())
+  clienteNome     String
+  clienteWhatsapp String
+  servicoNome     String
+  servicoPreco    String
+  duracaoMin      Int      @default(30)
+  dataHoraInicio  DateTime
+  dataHoraFim     DateTime
+  status          String   @default("pendente") // "pendente" | "concluido" | "cancelado"
+  criadoEm        DateTime @default(now())
+}
